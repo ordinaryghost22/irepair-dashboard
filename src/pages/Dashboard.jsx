@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../store/useStore";
 import { useTheme } from "../context/ThemeContext";
-import { useToast } from "../context/ToastContext";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, CartesianGrid } from "recharts";
 import Skeleton from "../components/Skeleton";
 import StatCard from "../components/StatCard";
@@ -17,12 +17,11 @@ export default function Dashboard() {
   const bookings = useStore(s => s.bookings);
   const slots    = useStore(s => s.slots);
   const leads    = useStore(s => s.leads);
-  const waitlist = useStore(s => s.waitlist);
   const loading  = useStore(s => s.loading);
   const { theme:t } = useTheme();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
-
-  const [range,       setRange]       = useState("All Time");
+  const [range, setRange] = useState("All Time");
   const [selectedDay, setSelectedDay] = useState(null);
 
   if (loading) return <Skeleton />;
@@ -38,117 +37,164 @@ export default function Dashboard() {
   const byDate   = {}; filtered.forEach(b=>{byDate[b.Date]=(byDate[b.Date]||0)+1;});
   const lineData = Object.entries(byDate).sort().slice(-10).map(([date,count])=>({date:date.slice(-5),count}));
 
-  const TH = { padding:"12px 20px", fontSize:11, fontWeight:700, color:t.thColor, textTransform:"uppercase", letterSpacing:0.8, textAlign:"left", background:t.thBg, borderBottom:`1px solid ${t.borderSub}` };
-  const TD = { padding:"14px 20px", fontSize:13.5, color:t.tdColor, borderBottom:`1px solid ${t.borderSub}` };
-  const tip = { contentStyle:{ borderRadius:12, border:`1px solid ${t.border}`, background:t.cardBg, color:t.textPrimary, boxShadow:"0 4px 24px rgba(0,0,0,0.15)", fontSize:13 } };
+  const p = isMobile ? 16 : 32;
+  const TH = { padding:isMobile?"10px 12px":"12px 20px", fontSize:11, fontWeight:700, color:t.thColor, textTransform:"uppercase", letterSpacing:0.8, textAlign:"left", background:t.thBg, borderBottom:`1px solid ${t.borderSub}` };
+  const TD = { padding:isMobile?"10px 12px":"14px 20px", fontSize:isMobile?12:13.5, color:t.tdColor, borderBottom:`1px solid ${t.borderSub}` };
+  const tip = { contentStyle:{ borderRadius:12, border:`1px solid ${t.border}`, background:t.cardBg, color:t.textPrimary, fontSize:12 } };
 
   return (
-    <div style={{ padding:32, maxWidth:1400, animation:"fadeIn .3s ease" }}>
+    <div style={{ padding:p, maxWidth:1400, animation:"fadeIn .3s ease" }}>
       <style>{"@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}"}</style>
 
       {/* Header */}
-      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:28 }}>
-        <div>
-          <h1 style={{ fontSize:22, fontWeight:800, color:t.textPrimary, letterSpacing:-0.6, margin:0 }}>Dashboard</h1>
-          <p style={{ color:t.textSecondary, fontSize:13, marginTop:5 }}>Welcome back — here is what is happening</p>
-        </div>
-        <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-          {DATE_RANGES.map(r => (
-            <button key={r} onClick={()=>setRange(r)} style={{ padding:"8px 16px", borderRadius:10, fontSize:12, fontWeight:600, cursor:"pointer", transition:"all .15s",
-              background:range===r?"linear-gradient(135deg,#667eea,#764ba2)":t.cardBg,
-              color:range===r?"#fff":t.textSecondary, border:range===r?"1px solid transparent":`1px solid ${t.border}`,
-              boxShadow:range===r?"0 4px 16px rgba(102,126,234,.3)":"none",
-            }}>{r}</button>
-          ))}
-        </div>
+      <div style={{ marginBottom:20 }}>
+        <h1 style={{ fontSize:isMobile?20:22, fontWeight:800, color:t.textPrimary, letterSpacing:-0.6, margin:0 }}>Dashboard</h1>
+        <p style={{ color:t.textSecondary, fontSize:13, marginTop:4 }}>Welcome back — here is what is happening</p>
       </div>
 
-      {/* Stat Cards */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:24 }}>
-        <StatCard label="Total Bookings"  value={filtered.length}               icon="📋" gradient="linear-gradient(135deg,#667eea,#764ba2)" glow="rgba(102,126,234,.4)" onClick={()=>navigate("/bookings")} />
-        <StatCard label="Total Leads"     value={leads.length}                  icon="👥" gradient="linear-gradient(135deg,#f43f5e,#e11d48)"  glow="rgba(244,63,94,.35)"  onClick={()=>navigate("/leads")} />
-        <StatCard label="Available Slots" value={available}                     icon="🕐" gradient="linear-gradient(135deg,#06b6d4,#0284c7)"  glow="rgba(6,182,212,.35)"  onClick={()=>navigate("/slots")} />
-        <StatCard label="Est. Revenue"    value={"₨"+revenue.toLocaleString()}  icon="💰" gradient="linear-gradient(135deg,#10b981,#059669)"  glow="rgba(16,185,129,.35)" sub={confirmed+" confirmed"} />
+      {/* Date range — scrollable row on mobile */}
+      <div style={{ display:"flex", gap:8, marginBottom:20, overflowX:"auto", paddingBottom:4, WebkitOverflowScrolling:"touch" }}>
+        {DATE_RANGES.map(r => (
+          <button key={r} onClick={()=>setRange(r)} style={{ padding:"8px 16px", borderRadius:10, fontSize:12, fontWeight:600, cursor:"pointer", transition:"all .15s", flexShrink:0,
+            background:range===r?"linear-gradient(135deg,#667eea,#764ba2)":t.cardBg,
+            color:range===r?"#fff":t.textSecondary, border:range===r?"1px solid transparent":`1px solid ${t.border}`,
+            boxShadow:range===r?"0 4px 16px rgba(102,126,234,.3)":"none",
+          }}>{r}</button>
+        ))}
       </div>
 
-      {/* Charts */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 280px", gap:20, marginBottom:24 }}>
-        <div style={{ background:t.cardBg, borderRadius:18, padding:24, border:`1px solid ${t.border}`, boxShadow:t.cardShadow }}>
-          <div style={{ fontWeight:700, fontSize:15, color:t.textPrimary, marginBottom:16 }}>Booking Trend</div>
-          <ResponsiveContainer width="100%" height={190}>
-            <LineChart data={lineData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={t.borderSub} />
-              <XAxis dataKey="date" tick={{fontSize:11,fill:t.textMuted}} axisLine={false} tickLine={false} />
-              <YAxis tick={{fontSize:11,fill:t.textMuted}} axisLine={false} tickLine={false} />
-              <Tooltip {...tip} />
-              <Line type="monotone" dataKey="count" stroke="#667eea" strokeWidth={2.5} dot={{fill:"#667eea",r:4,strokeWidth:0}} activeDot={{r:6,strokeWidth:0}} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+      {/* Stat Cards — 2 cols on mobile, 4 on desktop */}
+      <div style={{ display:"grid", gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(4,1fr)", gap:isMobile?12:16, marginBottom:20 }}>
+        <StatCard label="Total Bookings"  value={filtered.length}              icon="📋" gradient="linear-gradient(135deg,#667eea,#764ba2)" glow="rgba(102,126,234,.4)" onClick={()=>navigate("/bookings")} />
+        <StatCard label="Total Leads"     value={leads.length}                 icon="👥" gradient="linear-gradient(135deg,#f43f5e,#e11d48)"  glow="rgba(244,63,94,.35)"  onClick={()=>navigate("/leads")} />
+        <StatCard label="Avail. Slots"    value={available}                    icon="🕐" gradient="linear-gradient(135deg,#06b6d4,#0284c7)"  glow="rgba(6,182,212,.35)"  onClick={()=>navigate("/slots")} />
+        <StatCard label="Est. Revenue"    value={"₨"+revenue.toLocaleString()} icon="💰" gradient="linear-gradient(135deg,#10b981,#059669)"  glow="rgba(16,185,129,.35)" sub={confirmed+" confirmed"} />
+      </div>
 
-        <div style={{ background:t.cardBg, borderRadius:18, padding:24, border:`1px solid ${t.border}`, boxShadow:t.cardShadow }}>
-          <div style={{ fontWeight:700, fontSize:15, color:t.textPrimary, marginBottom:16 }}>Status Overview</div>
-          <ResponsiveContainer width="100%" height={190}>
-            <BarChart data={[{Confirmed:confirmed,Pending:pending,Rejected:rejected}]} barSize={44}>
-              <CartesianGrid strokeDasharray="3 3" stroke={t.borderSub} vertical={false} />
-              <XAxis hide /><YAxis tick={{fontSize:11,fill:t.textMuted}} axisLine={false} tickLine={false} />
-              <Tooltip {...tip} />
-              <Bar dataKey="Confirmed" fill="#22c55e" radius={[8,8,0,0]} />
-              <Bar dataKey="Pending"   fill="#eab308" radius={[8,8,0,0]} />
-              <Bar dataKey="Rejected"  fill="#ef4444" radius={[8,8,0,0]} />
-            </BarChart>
-          </ResponsiveContainer>
-          <div style={{ display:"flex", gap:16, marginTop:12 }}>
-            {[["#22c55e","Confirmed",confirmed],["#eab308","Pending",pending],["#ef4444","Rejected",rejected]].map(([c,l,v])=>(
-              <div key={l} style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:t.textSecondary }}>
-                <span style={{ width:8,height:8,borderRadius:2,background:c,display:"inline-block" }} />
-                {l}: <strong style={{color:t.textPrimary,marginLeft:3}}>{v}</strong>
-              </div>
-            ))}
+      {/* Charts — stacked on mobile */}
+      {isMobile ? (
+        <div style={{ display:"flex", flexDirection:"column", gap:16, marginBottom:20 }}>
+          {/* Status mini cards instead of charts on mobile */}
+          <div style={{ background:t.cardBg, borderRadius:16, padding:18, border:`1px solid ${t.border}`, boxShadow:t.cardShadow }}>
+            <div style={{ fontWeight:700, fontSize:14, color:t.textPrimary, marginBottom:14 }}>Status Overview</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
+              {[["#22c55e","Confirmed",confirmed],["#eab308","Pending",pending],["#ef4444","Rejected",rejected]].map(([c,l,v])=>(
+                <div key={l} style={{ background:t.cardBg2, borderRadius:12, padding:"12px 10px", textAlign:"center", border:`1px solid ${t.border}` }}>
+                  <div style={{ fontSize:22, fontWeight:800, color:c }}>{v}</div>
+                  <div style={{ fontSize:11, color:t.textMuted, marginTop:3 }}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Line chart — full width */}
+          <div style={{ background:t.cardBg, borderRadius:16, padding:18, border:`1px solid ${t.border}`, boxShadow:t.cardShadow }}>
+            <div style={{ fontWeight:700, fontSize:14, color:t.textPrimary, marginBottom:12 }}>Booking Trend</div>
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={lineData}>
+                <CartesianGrid strokeDasharray="3 3" stroke={t.borderSub} />
+                <XAxis dataKey="date" tick={{fontSize:10,fill:t.textMuted}} axisLine={false} tickLine={false} />
+                <YAxis tick={{fontSize:10,fill:t.textMuted}} axisLine={false} tickLine={false} width={25} />
+                <Tooltip {...tip} />
+                <Line type="monotone" dataKey="count" stroke="#667eea" strokeWidth={2} dot={{fill:"#667eea",r:3,strokeWidth:0}} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
-
-        <div style={{ background:t.cardBg, borderRadius:18, padding:24, border:`1px solid ${t.border}`, boxShadow:t.cardShadow }}>
-          <div style={{ fontWeight:700, fontSize:15, color:t.textPrimary, marginBottom:6 }}>Status Split</div>
-          {pieData.length>0 ? (
-            <ResponsiveContainer width="100%" height={210}>
-              <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={78} paddingAngle={4} dataKey="value">
-                  {pieData.map((_,i)=><Cell key={i} fill={COLORS[i]} />)}
-                </Pie>
+      ) : (
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 280px", gap:20, marginBottom:24 }}>
+          <div style={{ background:t.cardBg, borderRadius:18, padding:24, border:`1px solid ${t.border}`, boxShadow:t.cardShadow }}>
+            <div style={{ fontWeight:700, fontSize:15, color:t.textPrimary, marginBottom:16 }}>Booking Trend</div>
+            <ResponsiveContainer width="100%" height={190}>
+              <LineChart data={lineData}>
+                <CartesianGrid strokeDasharray="3 3" stroke={t.borderSub} />
+                <XAxis dataKey="date" tick={{fontSize:11,fill:t.textMuted}} axisLine={false} tickLine={false} />
+                <YAxis tick={{fontSize:11,fill:t.textMuted}} axisLine={false} tickLine={false} />
                 <Tooltip {...tip} />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{fontSize:12,color:t.textSecondary}} />
-              </PieChart>
+                <Line type="monotone" dataKey="count" stroke="#667eea" strokeWidth={2.5} dot={{fill:"#667eea",r:4,strokeWidth:0}} activeDot={{r:6,strokeWidth:0}} />
+              </LineChart>
             </ResponsiveContainer>
-          ) : <div style={{height:210,display:"flex",alignItems:"center",justifyContent:"center",color:t.textMuted,fontSize:13}}>No data yet</div>}
+          </div>
+          <div style={{ background:t.cardBg, borderRadius:18, padding:24, border:`1px solid ${t.border}`, boxShadow:t.cardShadow }}>
+            <div style={{ fontWeight:700, fontSize:15, color:t.textPrimary, marginBottom:16 }}>Status Overview</div>
+            <ResponsiveContainer width="100%" height={190}>
+              <BarChart data={[{Confirmed:confirmed,Pending:pending,Rejected:rejected}]} barSize={44}>
+                <CartesianGrid strokeDasharray="3 3" stroke={t.borderSub} vertical={false} />
+                <XAxis hide /><YAxis tick={{fontSize:11,fill:t.textMuted}} axisLine={false} tickLine={false} />
+                <Tooltip {...tip} />
+                <Bar dataKey="Confirmed" fill="#22c55e" radius={[8,8,0,0]} />
+                <Bar dataKey="Pending"   fill="#eab308" radius={[8,8,0,0]} />
+                <Bar dataKey="Rejected"  fill="#ef4444" radius={[8,8,0,0]} />
+              </BarChart>
+            </ResponsiveContainer>
+            <div style={{ display:"flex", gap:16, marginTop:12 }}>
+              {[["#22c55e","Confirmed",confirmed],["#eab308","Pending",pending],["#ef4444","Rejected",rejected]].map(([c,l,v])=>(
+                <div key={l} style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:t.textSecondary }}>
+                  <span style={{ width:8,height:8,borderRadius:2,background:c,display:"inline-block" }} />
+                  {l}: <strong style={{color:t.textPrimary,marginLeft:3}}>{v}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ background:t.cardBg, borderRadius:18, padding:24, border:`1px solid ${t.border}`, boxShadow:t.cardShadow }}>
+            <div style={{ fontWeight:700, fontSize:15, color:t.textPrimary, marginBottom:6 }}>Status Split</div>
+            {pieData.length>0 ? (
+              <ResponsiveContainer width="100%" height={210}>
+                <PieChart>
+                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={78} paddingAngle={4} dataKey="value">
+                    {pieData.map((_,i)=><Cell key={i} fill={COLORS[i]} />)}
+                  </Pie>
+                  <Tooltip {...tip} />
+                  <Legend iconType="circle" iconSize={8} wrapperStyle={{fontSize:12,color:t.textSecondary}} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : <div style={{height:210,display:"flex",alignItems:"center",justifyContent:"center",color:t.textMuted,fontSize:13}}>No data yet</div>}
+          </div>
         </div>
-      </div>
-
-    
+      )}
 
       {/* Recent Bookings */}
       <div style={{ background:t.cardBg, borderRadius:18, border:`1px solid ${t.border}`, boxShadow:t.cardShadow, overflow:"hidden" }}>
-        <div style={{ padding:"18px 22px", borderBottom:`1px solid ${t.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-          <div style={{ fontWeight:700, fontSize:15, color:t.textPrimary }}>Recent Bookings</div>
-          <button onClick={()=>exportToCSV(filtered,"bookings.csv")} style={{ padding:"7px 16px", borderRadius:9, border:`1px solid ${t.border}`, background:t.cardBg2, cursor:"pointer", fontSize:12, fontWeight:600, color:t.textSecondary }}>📥 Export CSV</button>
+        <div style={{ padding:`16px ${isMobile?14:22}px`, borderBottom:`1px solid ${t.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ fontWeight:700, fontSize:isMobile?14:15, color:t.textPrimary }}>Recent Bookings</div>
+          <button onClick={()=>exportToCSV(filtered,"bookings.csv")} style={{ padding:"6px 12px", borderRadius:9, border:`1px solid ${t.border}`, background:t.cardBg2, cursor:"pointer", fontSize:11, fontWeight:600, color:t.textSecondary }}>📥 CSV</button>
         </div>
-        <table style={{ width:"100%", borderCollapse:"collapse" }}>
-          <thead><tr>{["Name","Service","Date","Time","Status"].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
-          <tbody>
+
+        {/* Mobile: card list */}
+        {isMobile ? (
+          <div style={{ padding:12 }}>
             {filtered.length===0
-              ? <tr><td colSpan={5} style={{padding:"48px",textAlign:"center",color:t.textMuted,fontSize:14}}>No bookings in this range</td></tr>
+              ? <div style={{padding:"32px",textAlign:"center",color:t.textMuted,fontSize:14}}>No bookings in this range</div>
               : filtered.slice(0,6).map((b,i)=>(
-                <tr key={i} style={{transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=t.rowHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  <td style={{...TD,fontWeight:600}}>{b.Name}</td>
-                  <td style={TD}>{b.Service}</td>
-                  <td style={TD}>{formatDate(b.Date)}</td>
-                  <td style={TD}>{b.Time}</td>
-                  <td style={TD}><StatusBadge status={b.Status} /></td>
-                </tr>
+                <div key={i} style={{ padding:"12px 14px", borderRadius:12, background:t.cardBg2, border:`1px solid ${t.border}`, marginBottom:8 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                    <span style={{ fontWeight:700, fontSize:14, color:t.textPrimary }}>{b.Name}</span>
+                    <StatusBadge status={b.Status} />
+                  </div>
+                  <div style={{ fontSize:12, color:t.textSecondary }}>{b.Service} · {formatDate(b.Date)} · {b.Time}</div>
+                </div>
               ))
             }
-          </tbody>
-        </table>
+          </div>
+        ) : (
+          <table style={{ width:"100%", borderCollapse:"collapse" }}>
+            <thead><tr>{["Name","Service","Date","Time","Status"].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
+            <tbody>
+              {filtered.length===0
+                ? <tr><td colSpan={5} style={{padding:"48px",textAlign:"center",color:t.textMuted,fontSize:14}}>No bookings in this range</td></tr>
+                : filtered.slice(0,6).map((b,i)=>(
+                  <tr key={i} style={{transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=t.rowHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <td style={{...TD,fontWeight:600}}>{b.Name}</td>
+                    <td style={TD}>{b.Service}</td>
+                    <td style={TD}>{formatDate(b.Date)}</td>
+                    <td style={TD}>{b.Time}</td>
+                    <td style={TD}><StatusBadge status={b.Status} /></td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

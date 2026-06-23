@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useStore } from "../store/useStore";
 import { useTheme } from "../context/ThemeContext";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, RadarChart, Radar, PolarGrid, PolarAngleAxis, AreaChart, Area, Cell, PieChart, Pie, Legend } from "recharts";
 import Skeleton from "../components/Skeleton";
 import { SERVICE_PRICES } from "../constants";
@@ -14,12 +15,12 @@ export default function Analytics() {
   const chats    = useStore(s => s.chats);
   const loading  = useStore(s => s.loading);
   const { theme:t } = useTheme();
+  const isMobile = useIsMobile();
   const [tab, setTab] = useState("overview");
 
   const tip = { contentStyle:{ borderRadius:12, border:`1px solid ${t.border}`, background:t.cardBg, color:t.textPrimary, fontSize:13 } };
 
   const analytics = useMemo(() => {
-    // ── Busiest days heatmap ─────────────────────────────────────────────────
     const dayCount = Array(7).fill(0);
     bookings.forEach(b => {
       if (!b.Date) return;
@@ -29,7 +30,6 @@ export default function Analytics() {
     const busyDays = DAYS_FULL.map((day, i) => ({ day: day.slice(0,3), full:day, count: dayCount[i] }));
     const maxDay   = Math.max(...dayCount, 1);
 
-    // ── Busiest hours ────────────────────────────────────────────────────────
     const hourCount = {};
     bookings.forEach(b => {
       if (!b.Time) return;
@@ -38,14 +38,12 @@ export default function Analytics() {
     });
     const busyHours = Object.entries(hourCount).sort().map(([h,c]) => ({ hour:h, count:c }));
 
-    // ── Service popularity ───────────────────────────────────────────────────
     const svcCount = {};
     bookings.forEach(b => { if(b.Service) svcCount[b.Service] = (svcCount[b.Service]||0)+1; });
     const services = Object.entries(svcCount).sort(([,a],[,b])=>b-a).map(([name,count]) => ({
       name, count, revenue: (SERVICE_PRICES[name]||0) * bookings.filter(b=>b.Service===name&&b.Status==="Confirmed").length
     }));
 
-    // ── Revenue by month ─────────────────────────────────────────────────────
     const revByMonth = {};
     bookings.filter(b=>b.Status==="Confirmed").forEach(b => {
       if (!b.Date) return;
@@ -56,14 +54,12 @@ export default function Analytics() {
     });
     const revenueByMonth = Object.entries(revByMonth).sort().slice(-6).map(([m,rev]) => ({ month:m.slice(5), rev }));
 
-    // ── Conversion funnel ────────────────────────────────────────────────────
     const total     = bookings.length;
     const confirmed = bookings.filter(b=>b.Status==="Confirmed").length;
     const rejected  = bookings.filter(b=>b.Status==="Rejected").length;
     const pending   = bookings.filter(b=>b.Status==="Pending").length;
     const convRate  = total ? Math.round((confirmed/total)*100) : 0;
 
-    // ── Most asked in chats ──────────────────────────────────────────────────
     const keywords = {};
     const stopWords = new Set(["i","the","a","is","my","to","it","and","of","in","for","what","how","can","do","you","me","we"]);
     chats.forEach(c => {
@@ -74,7 +70,6 @@ export default function Analytics() {
     });
     const topKeywords = Object.entries(keywords).sort(([,a],[,b])=>b-a).slice(0,10).map(([word,count])=>({word,count}));
 
-    // ── Customer retention ───────────────────────────────────────────────────
     const phoneBookings = {};
     bookings.forEach(b => {
       if (!b.Phone) return;
@@ -84,7 +79,6 @@ export default function Analytics() {
     const oneTime    = Object.values(phoneBookings).filter(c=>c===1).length;
     const retention  = Object.keys(phoneBookings).length ? Math.round((returning/Object.keys(phoneBookings).length)*100) : 0;
 
-    // ── Weekly bookings trend ────────────────────────────────────────────────
     const weeklyMap = {};
     bookings.forEach(b => {
       if (!b.Date) return;
@@ -100,26 +94,25 @@ export default function Analytics() {
 
   if (loading) return <Skeleton />;
 
-  const card = { background:t.cardBg, borderRadius:18, padding:24, border:`1px solid ${t.border}`, boxShadow:t.cardShadow };
+  const card = { background:t.cardBg, borderRadius:18, padding:isMobile?16:24, border:`1px solid ${t.border}`, boxShadow:t.cardShadow };
   const cardTitle = { fontWeight:700, fontSize:15, color:t.textPrimary, marginBottom:18 };
-
   const TABS = ["overview","bookings","revenue","customers","chats"];
 
   return (
-    <div style={{ padding:32, maxWidth:1400, animation:"fadeIn .3s ease" }}>
+    <div style={{ padding:isMobile?14:32, maxWidth:1400, animation:"fadeIn .3s ease" }}>
       <style>{"@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}"}</style>
 
-      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:28 }}>
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:isMobile?16:28 }}>
         <div>
-          <h1 style={{ fontSize:22, fontWeight:800, color:t.textPrimary, letterSpacing:-0.6, margin:0 }}>Advanced Analytics</h1>
+          <h1 style={{ fontSize:isMobile?20:22, fontWeight:800, color:t.textPrimary, letterSpacing:-0.6, margin:0 }}>Advanced Analytics</h1>
           <p style={{ color:t.textSecondary, fontSize:13, marginTop:5 }}>Deep insights into your business performance</p>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display:"flex", gap:8, marginBottom:24, flexWrap:"wrap" }}>
+      {/* Tabs — scrollable on mobile */}
+      <div style={{ display:"flex", gap:8, marginBottom:20, overflowX:"auto", paddingBottom:4, WebkitOverflowScrolling:"touch" }}>
         {TABS.map(tb => (
-          <button key={tb} onClick={()=>setTab(tb)} style={{ padding:"9px 20px", borderRadius:10, fontSize:13, fontWeight:600, cursor:"pointer", transition:"all .15s", textTransform:"capitalize",
+          <button key={tb} onClick={()=>setTab(tb)} style={{ padding:"9px 16px", borderRadius:10, fontSize:13, fontWeight:600, cursor:"pointer", transition:"all .15s", textTransform:"capitalize", flexShrink:0,
             background:tab===tb?"linear-gradient(135deg,#667eea,#764ba2)":t.cardBg,
             color:tab===tb?"#fff":t.textSecondary, border:tab===tb?"1px solid transparent":`1px solid ${t.border}`,
             boxShadow:tab===tb?"0 4px 16px rgba(102,126,234,.3)":"none",
@@ -129,36 +122,36 @@ export default function Analytics() {
 
       {/* ── OVERVIEW TAB ── */}
       {tab==="overview" && (
-        <div style={{ display:"grid", gap:20 }}>
-          {/* KPI row */}
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:16 }}>
+        <div style={{ display:"grid", gap:16 }}>
+          {/* KPI row — 2 cols on mobile, 5 on desktop */}
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(5,1fr)", gap:isMobile?10:16 }}>
             {[
-              { label:"Total Bookings", value:analytics.total,   icon:"📋", color:"#667eea" },
-              { label:"Confirmed",      value:analytics.confirmed,icon:"✅", color:"#22c55e" },
-              { label:"Pending",        value:analytics.pending,  icon:"⏳", color:"#eab308" },
-              { label:"Conv. Rate",     value:analytics.convRate+"%",icon:"📈",color:"#06b6d4" },
-              { label:"Retention",      value:analytics.retention+"%",icon:"🔄",color:"#f43f5e" },
+              { label:"Total Bookings", value:analytics.total,            icon:"📋", color:"#667eea" },
+              { label:"Confirmed",      value:analytics.confirmed,         icon:"✅", color:"#22c55e" },
+              { label:"Pending",        value:analytics.pending,           icon:"⏳", color:"#eab308" },
+              { label:"Conv. Rate",     value:analytics.convRate+"%",      icon:"📈", color:"#06b6d4" },
+              { label:"Retention",      value:analytics.retention+"%",     icon:"🔄", color:"#f43f5e" },
             ].map(k => (
-              <div key={k.label} style={{ ...card, display:"flex", alignItems:"center", gap:14 }}>
-                <div style={{ width:44, height:44, borderRadius:13, background:`${k.color}20`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>{k.icon}</div>
+              <div key={k.label} style={{ ...card, display:"flex", alignItems:"center", gap:isMobile?10:14 }}>
+                <div style={{ width:isMobile?36:44, height:isMobile?36:44, borderRadius:13, background:`${k.color}20`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:isMobile?16:20, flexShrink:0 }}>{k.icon}</div>
                 <div>
-                  <div style={{ fontSize:24, fontWeight:800, color:t.textPrimary }}>{k.value}</div>
-                  <div style={{ fontSize:11, color:t.textMuted, fontWeight:500 }}>{k.label}</div>
+                  <div style={{ fontSize:isMobile?18:24, fontWeight:800, color:t.textPrimary }}>{k.value}</div>
+                  <div style={{ fontSize:isMobile?10:11, color:t.textMuted, fontWeight:500 }}>{k.label}</div>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Busiest Days Heatmap */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
+          {/* Busiest Days + Peak Hours — stacked on mobile */}
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:16 }}>
             <div style={card}>
               <div style={cardTitle}>📅 Busiest Days</div>
               <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                 {analytics.busyDays.map(d => (
                   <div key={d.day} style={{ display:"flex", alignItems:"center", gap:12 }}>
                     <div style={{ width:36, fontSize:12, fontWeight:600, color:t.textSecondary }}>{d.day}</div>
-                    <div style={{ flex:1, height:28, borderRadius:8, background:t.cardBg2, overflow:"hidden", position:"relative" }}>
-                      <div style={{ height:"100%", width:`${(d.count/analytics.maxDay)*100}%`, borderRadius:8, background:`linear-gradient(135deg,#667eea,#764ba2)`, transition:"width .5s ease", minWidth:d.count>0?8:0 }} />
+                    <div style={{ flex:1, height:28, borderRadius:8, background:t.cardBg2, overflow:"hidden" }}>
+                      <div style={{ height:"100%", width:`${(d.count/analytics.maxDay)*100}%`, borderRadius:8, background:"linear-gradient(135deg,#667eea,#764ba2)", transition:"width .5s ease", minWidth:d.count>0?8:0 }} />
                     </div>
                     <div style={{ width:24, fontSize:12, fontWeight:700, color:t.textPrimary, textAlign:"right" }}>{d.count}</div>
                   </div>
@@ -169,15 +162,15 @@ export default function Analytics() {
             <div style={card}>
               <div style={cardTitle}>⏰ Peak Hours</div>
               {analytics.busyHours.length > 0 ? (
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={analytics.busyHours} barSize={24}>
+                <ResponsiveContainer width="100%" height={isMobile?160:200}>
+                  <BarChart data={analytics.busyHours} barSize={isMobile?16:24}>
                     <XAxis dataKey="hour" tick={{fontSize:10,fill:t.textMuted}} axisLine={false} tickLine={false} />
                     <YAxis tick={{fontSize:10,fill:t.textMuted}} axisLine={false} tickLine={false} />
                     <Tooltip {...tip} />
                     <Bar dataKey="count" fill="#667eea" radius={[6,6,0,0]} />
                   </BarChart>
                 </ResponsiveContainer>
-              ) : <div style={{height:200,display:"flex",alignItems:"center",justifyContent:"center",color:t.textMuted,fontSize:13}}>No time data yet</div>}
+              ) : <div style={{height:160,display:"flex",alignItems:"center",justifyContent:"center",color:t.textMuted,fontSize:13}}>No time data yet</div>}
             </div>
           </div>
         </div>
@@ -185,8 +178,9 @@ export default function Analytics() {
 
       {/* ── BOOKINGS TAB ── */}
       {tab==="bookings" && (
-        <div style={{ display:"grid", gap:20 }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
+        <div style={{ display:"grid", gap:16 }}>
+          {/* Service Popularity + Weekly Trend — stacked on mobile */}
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:16 }}>
             <div style={card}>
               <div style={cardTitle}>🔧 Service Popularity</div>
               {analytics.services.length > 0 ? (
@@ -208,7 +202,7 @@ export default function Analytics() {
 
             <div style={card}>
               <div style={cardTitle}>📊 Weekly Trend</div>
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={isMobile?160:220}>
                 <AreaChart data={analytics.weekly}>
                   <defs>
                     <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
@@ -226,19 +220,19 @@ export default function Analytics() {
             </div>
           </div>
 
-          {/* Conversion funnel */}
+          {/* Conversion funnel — 1 col on mobile */}
           <div style={card}>
             <div style={cardTitle}>🎯 Booking Funnel</div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16 }}>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)", gap:isMobile?10:16 }}>
               {[
-                { label:"Total Received", value:analytics.total, color:"#667eea", pct:100 },
+                { label:"Total Received", value:analytics.total,     color:"#667eea", pct:100 },
                 { label:"Confirmed",      value:analytics.confirmed, color:"#22c55e", pct:analytics.total?Math.round(analytics.confirmed/analytics.total*100):0 },
                 { label:"Rejected",       value:analytics.rejected,  color:"#ef4444", pct:analytics.total?Math.round(analytics.rejected/analytics.total*100):0 },
               ].map(f => (
-                <div key={f.label} style={{ background:t.cardBg2, borderRadius:14, padding:20, border:`1px solid ${t.border}`, textAlign:"center" }}>
-                  <div style={{ fontSize:32, fontWeight:800, color:f.color }}>{f.value}</div>
+                <div key={f.label} style={{ background:t.cardBg2, borderRadius:14, padding:isMobile?"14px 16px":20, border:`1px solid ${t.border}`, textAlign:"center" }}>
+                  <div style={{ fontSize:isMobile?24:32, fontWeight:800, color:f.color }}>{f.value}</div>
                   <div style={{ fontSize:12, color:t.textSecondary, marginTop:4 }}>{f.label}</div>
-                  <div style={{ marginTop:12, height:6, borderRadius:3, background:t.border }}>
+                  <div style={{ marginTop:10, height:6, borderRadius:3, background:t.border }}>
                     <div style={{ height:"100%", borderRadius:3, width:`${f.pct}%`, background:f.color, transition:"width .8s ease" }} />
                   </div>
                   <div style={{ fontSize:11, color:t.textMuted, marginTop:6 }}>{f.pct}%</div>
@@ -251,15 +245,15 @@ export default function Analytics() {
 
       {/* ── REVENUE TAB ── */}
       {tab==="revenue" && (
-        <div style={{ display:"grid", gap:20 }}>
+        <div style={{ display:"grid", gap:16 }}>
           <div style={card}>
             <div style={cardTitle}>💰 Revenue by Month (₨)</div>
             {analytics.revenueByMonth.length > 0 ? (
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={analytics.revenueByMonth} barSize={40}>
+              <ResponsiveContainer width="100%" height={isMobile?200:280}>
+                <BarChart data={analytics.revenueByMonth} barSize={isMobile?24:40}>
                   <CartesianGrid strokeDasharray="3 3" stroke={t.borderSub} vertical={false} />
-                  <XAxis dataKey="month" tick={{fontSize:12,fill:t.textMuted}} axisLine={false} tickLine={false} />
-                  <YAxis tick={{fontSize:12,fill:t.textMuted}} axisLine={false} tickLine={false} tickFormatter={v=>"₨"+v.toLocaleString()} />
+                  <XAxis dataKey="month" tick={{fontSize:isMobile?10:12,fill:t.textMuted}} axisLine={false} tickLine={false} />
+                  <YAxis tick={{fontSize:isMobile?10:12,fill:t.textMuted}} axisLine={false} tickLine={false} tickFormatter={v=>"₨"+v.toLocaleString()} width={isMobile?50:60} />
                   <Tooltip {...tip} formatter={v=>["₨"+v.toLocaleString(),"Revenue"]} />
                   <Bar dataKey="rev" radius={[8,8,0,0]}>
                     {analytics.revenueByMonth.map((_,i) => (
@@ -271,7 +265,8 @@ export default function Analytics() {
             ) : <div style={{color:t.textMuted,fontSize:13,textAlign:"center",padding:"80px 0"}}>No revenue data yet — confirm some bookings!</div>}
           </div>
 
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
+          {/* Revenue by Service + Summary — stacked on mobile */}
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:16 }}>
             <div style={card}>
               <div style={cardTitle}>🔧 Revenue by Service</div>
               {analytics.services.filter(s=>s.revenue>0).length > 0 ? (
@@ -290,10 +285,10 @@ export default function Analytics() {
             <div style={card}>
               <div style={cardTitle}>📊 Total Revenue Summary</div>
               {[
-                { label:"Confirmed Revenue", value:"₨"+analytics.services.reduce((s,x)=>s+x.revenue,0).toLocaleString(), color:"#22c55e" },
-                { label:"Potential (Pending)", value:"₨"+(analytics.pending*(Object.values(SERVICE_PRICES).reduce((a,b)=>a+b,0)/Object.values(SERVICE_PRICES).length)).toLocaleString().split(".")[0], color:"#eab308" },
-                { label:"Conversion Rate",   value:analytics.convRate+"%", color:"#667eea" },
-                { label:"Avg. Booking Value", value:"₨"+(analytics.confirmed?Math.round(analytics.services.reduce((s,x)=>s+x.revenue,0)/analytics.confirmed):0).toLocaleString(), color:"#06b6d4" },
+                { label:"Confirmed Revenue",   value:"₨"+analytics.services.reduce((s,x)=>s+x.revenue,0).toLocaleString(), color:"#22c55e" },
+                { label:"Potential (Pending)",  value:"₨"+(analytics.pending*(Object.values(SERVICE_PRICES).reduce((a,b)=>a+b,0)/Object.values(SERVICE_PRICES).length)).toLocaleString().split(".")[0], color:"#eab308" },
+                { label:"Conversion Rate",      value:analytics.convRate+"%", color:"#667eea" },
+                { label:"Avg. Booking Value",   value:"₨"+(analytics.confirmed?Math.round(analytics.services.reduce((s,x)=>s+x.revenue,0)/analytics.confirmed):0).toLocaleString(), color:"#06b6d4" },
               ].map(r => (
                 <div key={r.label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 0", borderBottom:`1px solid ${t.borderSub}` }}>
                   <span style={{ fontSize:13, color:t.textSecondary }}>{r.label}</span>
@@ -307,18 +302,19 @@ export default function Analytics() {
 
       {/* ── CUSTOMERS TAB ── */}
       {tab==="customers" && (
-        <div style={{ display:"grid", gap:20 }}>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16 }}>
+        <div style={{ display:"grid", gap:16 }}>
+          {/* 3 stat cards — always 3 cols but smaller on mobile */}
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:isMobile?10:16 }}>
             {[
-              { label:"Unique Customers", value:analytics.returning+analytics.oneTime, icon:"👥", color:"#667eea" },
-              { label:"Returning Customers", value:analytics.returning, icon:"🔄", color:"#22c55e" },
-              { label:"Retention Rate", value:analytics.retention+"%", icon:"📈", color:"#f43f5e" },
+              { label:"Unique Customers",    value:analytics.returning+analytics.oneTime, icon:"👥", color:"#667eea" },
+              { label:"Returning Customers", value:analytics.returning,                   icon:"🔄", color:"#22c55e" },
+              { label:"Retention Rate",      value:analytics.retention+"%",               icon:"📈", color:"#f43f5e" },
             ].map(k => (
-              <div key={k.label} style={{ ...card, display:"flex", alignItems:"center", gap:16 }}>
-                <div style={{ width:50, height:50, borderRadius:15, background:`${k.color}20`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24 }}>{k.icon}</div>
+              <div key={k.label} style={{ ...card, display:"flex", alignItems:"center", gap:isMobile?8:16 }}>
+                <div style={{ width:isMobile?36:50, height:isMobile?36:50, borderRadius:15, background:`${k.color}20`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:isMobile?18:24, flexShrink:0 }}>{k.icon}</div>
                 <div>
-                  <div style={{ fontSize:28, fontWeight:800, color:t.textPrimary }}>{k.value}</div>
-                  <div style={{ fontSize:12, color:t.textMuted }}>{k.label}</div>
+                  <div style={{ fontSize:isMobile?18:28, fontWeight:800, color:t.textPrimary }}>{k.value}</div>
+                  <div style={{ fontSize:isMobile?10:12, color:t.textMuted }}>{k.label}</div>
                 </div>
               </div>
             ))}
@@ -326,7 +322,8 @@ export default function Analytics() {
 
           <div style={card}>
             <div style={cardTitle}>🔄 Customer Loyalty</div>
-            <div style={{ display:"grid", gridTemplateColumns:"200px 1fr", gap:24, alignItems:"center" }}>
+            {/* Stacked on mobile, side by side on desktop */}
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"200px 1fr", gap:24, alignItems:"center" }}>
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie data={[{name:"Returning",value:analytics.returning},{name:"One-time",value:analytics.oneTime}]}
@@ -363,8 +360,9 @@ export default function Analytics() {
 
       {/* ── CHATS TAB ── */}
       {tab==="chats" && (
-        <div style={{ display:"grid", gap:20 }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
+        <div style={{ display:"grid", gap:16 }}>
+          {/* Stacked on mobile, side by side on desktop */}
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:16 }}>
             <div style={card}>
               <div style={cardTitle}>💬 Most Asked Keywords</div>
               {analytics.topKeywords.length > 0 ? (
@@ -398,8 +396,8 @@ export default function Analytics() {
               <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
                 {[
                   { label:"Total Conversations", value:useStore.getState().chats.length, icon:"💬", color:"#667eea" },
-                  { label:"Unique Topics",        value:analytics.topKeywords.length,       icon:"🔍", color:"#22c55e" },
-                  { label:"Most Common Topic",    value:analytics.topKeywords[0]?.word||"—",icon:"🏆", color:"#eab308" },
+                  { label:"Unique Topics",        value:analytics.topKeywords.length,     icon:"🔍", color:"#22c55e" },
+                  { label:"Most Common Topic",    value:analytics.topKeywords[0]?.word||"—", icon:"🏆", color:"#eab308" },
                 ].map(s => (
                   <div key={s.label} style={{ display:"flex", alignItems:"center", gap:14, padding:"14px 16px", background:t.cardBg2, borderRadius:14, border:`1px solid ${t.border}` }}>
                     <div style={{ fontSize:22 }}>{s.icon}</div>
