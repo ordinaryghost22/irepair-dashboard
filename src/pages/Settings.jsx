@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useTheme } from "../context/ThemeContext";
 import { SERVICE_PRICES } from "../constants";
+import { useMobile } from "../hooks/useMobile";
+import HourglassLoader from "../components/HourglassLoader";
 
 export default function Settings() {
   const { theme:t, dark, toggle } = useTheme();
   const [saved,  setSaved]  = useState(false);
   const [prices, setPrices] = useState(SERVICE_PRICES);
+  const isMobile = useMobile();
 
   const section = { background:t.cardBg, borderRadius:18, border:`1px solid ${t.border}`, boxShadow:t.cardShadow, padding:"22px 20px", marginBottom:16 };
   const sTitle  = { fontWeight:700, fontSize:14, color:t.textPrimary, marginBottom:20, paddingBottom:14, borderBottom:`1px solid ${t.borderSub}` };

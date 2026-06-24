@@ -3,12 +3,14 @@ import { useTheme } from "../context/ThemeContext";
 import Skeleton from "../components/Skeleton";
 import EmptyState from "../components/EmptyState";
 import { formatDate, formatPhone, whatsappLink } from "../utils/format";
+import { useMobile } from "../hooks/useMobile";
+import HourglassLoader from "../components/HourglassLoader";
 
 export default function Waitlist() {
   const waitlist = useStore(s => s.waitlist);
   const loading = useStore(s => s.loading);
   const { theme:t } = useTheme();
-  if (loading) return <Skeleton />;
+  if (loading) return <HourglassLoader />;
   const TH = { padding:"10px 12px", fontSize:11, fontWeight:700, color:t.thColor, textTransform:"uppercase", letterSpacing:0.8, textAlign:"left", background:t.thBg, borderBottom:`1px solid ${t.borderSub}` };
   const TD = { padding:"12px 12px", fontSize:13, color:t.tdColor, borderBottom:`1px solid ${t.borderSub}` };
   return (

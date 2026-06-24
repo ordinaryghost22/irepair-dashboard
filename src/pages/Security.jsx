@@ -1,6 +1,8 @@
 import { useSecurity } from "../context/SecurityContext";
 import { useTheme } from "../context/ThemeContext";
 import EmptyState from "../components/EmptyState";
+import { useMobile } from "../hooks/useMobile";
+import HourglassLoader from "../components/HourglassLoader";
 
 const EVENT_ICON = {
   "Login Success": "✅",
@@ -13,6 +15,7 @@ const EVENT_ICON = {
 export default function Security() {
   const { securityLog, logout } = useSecurity();
   const { theme:t } = useTheme();
+  const isMobile = useMobile();
 
   const TH = { padding:"10px 12px", fontSize:11, fontWeight:700, color:t.thColor, textTransform:"uppercase", letterSpacing:0.8, textAlign:"left", background:t.thBg, borderBottom:`1px solid ${t.borderSub}` };
   const TD = { padding:"12px 12px", fontSize:13, color:t.tdColor, borderBottom:`1px solid ${t.borderSub}` };

@@ -2,12 +2,13 @@ import { useStore } from "../store/useStore";
 import { useTheme } from "../context/ThemeContext";
 import Skeleton from "../components/Skeleton";
 import EmptyState from "../components/EmptyState";
+import HourglassLoader from "../components/HourglassLoader";
 
 export default function Chats() {
   const chats = useStore(s => s.chats);
   const loading = useStore(s => s.loading);
   const { theme:t } = useTheme();
-  if (loading) return <Skeleton />;
+  if (loading) return <HourglassLoader />;
   return (
     <div style={{ padding:"20px 16px", maxWidth:900, animation:"fadeIn .3s ease" }}>
       <style>{"@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}"}</style>

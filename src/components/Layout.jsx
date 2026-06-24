@@ -6,6 +6,7 @@ import { NAV_ITEMS } from "../constants";
 import { useSwipeNav } from "../hooks/useSwipeNav";
 import GlobalSearch from "./GlobalSearch";
 import NotifBell from "./NotifBell";
+import { useMobile } from "../hooks/useMobile";
 
 export default function Layout({ children }) {
   const location = useLocation();
@@ -21,6 +22,7 @@ export default function Layout({ children }) {
   const setIsPaused= useStore(s => s.setIsPaused);
   const lastFetch  = useStore(s => s.lastFetch);
   useSwipeNav();
+  const isMobile = useMobile();
 
   const pendingCount = bookings.filter(b => b.Status === "Pending").length;
 
@@ -71,7 +73,7 @@ export default function Layout({ children }) {
       {/* ── MAIN ── */}
       <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minWidth:0 }}>
         {/* Topbar */}
-        <div style={{ height:58, background:t.topbarBg, borderBottom:`1px solid ${t.border}`, display:"flex", alignItems:"center", padding:"0 12px", gap:8, flexShrink:0 }}>
+        <div style={{ height:58, background:t.topbarBg, borderBottom:`1px solid ${t.border}`, display:"flex", alignItems:"center", padding:"0 8px", gap:6, flexShrink:0 }}>
           {/* Hamburger */}
           <button
             onClick={() => { setSidebarOpen(!sidebarOpen); setMobileOpen(!mobileOpen); }}
@@ -79,7 +81,7 @@ export default function Layout({ children }) {
           >☰</button>
 
           {/* Search — shrinks on mobile */}
-          <div style={{ flex:"1 1 auto", minWidth:0, maxWidth:320 }}>
+          <div style={{ flex:"1 1 auto", minWidth:0, maxWidth:240 }}>
             <GlobalSearch />
           </div>
 
@@ -95,7 +97,7 @@ export default function Layout({ children }) {
           <NotifBell />
 
           {/* Pause/Resume */}
-          <button onClick={() => setIsPaused(!isPaused)} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", borderRadius:20, border:`1px solid ${t.border}`, background:t.cardBg2, color:isPaused?t.textMuted:"#22c55e", fontSize:12, fontWeight:600, cursor:"pointer", flexShrink:0, whiteSpace:"nowrap" }}>
+          <button onClick={() => setIsPaused(!isPaused)} style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 8px", borderRadius:20, border:`1px solid ${t.border}`, background:t.cardBg2, color:isPaused?t.textMuted:"#22c55e", fontSize:12, fontWeight:600, cursor:"pointer", flexShrink:0, whiteSpace:"nowrap" }}>
             {isPaused ? "⏸" : "🔄"} <span style={{ display:"inline" }}>{isPaused ? "Paused" : "Live"}</span>
           </button>
 

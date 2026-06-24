@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useStore } from "../store/useStore";
 import { useTheme } from "../context/ThemeContext";
 import Skeleton from "../components/Skeleton";
+import { useMobile } from "../hooks/useMobile";
+import HourglassLoader from "../components/HourglassLoader";
 
 function exportCSV(data) {
   if (!data.length) return;
@@ -21,6 +23,7 @@ function CalendarView({ slots, theme: t, dark }) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date();
+  const isMobile = useMobile();
 
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
@@ -167,7 +170,7 @@ export default function Slots() {
   const { theme: t, dark } = useTheme();
   const [search, setSearch] = useState("");
   const [view, setView] = useState("calendar");
-  if (loading) return <Skeleton />;
+  if (loading) return <HourglassLoader />;
 
   const available = slots.filter(s=>s.Status==="Available").length;
   const filtered = slots.filter(s => s.Day?.toLowerCase().includes(search.toLowerCase()) || s["Booked By"]?.toLowerCase().includes(search.toLowerCase()));

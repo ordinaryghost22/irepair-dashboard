@@ -9,6 +9,9 @@ import EmptyState from "../components/EmptyState";
 import CustomerHistory from "../components/CustomerHistory";
 import { exportToCSV } from "../utils/export";
 import { formatDate, formatPhone, whatsappLink } from "../utils/format";
+import { useMobile } from "../hooks/useMobile";
+import HourglassLoader from "../components/HourglassLoader";
+
 
 function BookingModal({ booking, onClose, onConfirm, onReject }) {
   const { theme:t } = useTheme();
@@ -66,13 +69,14 @@ export default function Bookings() {
   const storeReject     = useStore(s => s.rejectBooking);
   const { theme:t }     = useTheme();
   const { showToast }   = useToast();
+  const isMobile = useMobile();
 
   const [search,   setSearch]   = useState("");
   const [filter,   setFilter]   = useState("All");
   const [selected, setSelected] = useState(null);
   const [customer, setCustomer] = useState(null);
 
-  if (loading) return <Skeleton />;
+  if (loading) return <HourglassLoader />;
 
   const TH = { padding:"10px 12px", fontSize:11, fontWeight:700, color:t.thColor, textTransform:"uppercase", letterSpacing:0.8, textAlign:"left", background:t.thBg, borderBottom:`1px solid ${t.borderSub}` };
   const TD = { padding:"12px 12px", fontSize:13, color:t.tdColor, borderBottom:`1px solid ${t.borderSub}` };

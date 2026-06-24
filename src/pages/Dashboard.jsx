@@ -10,6 +10,8 @@ import StatusBadge from "../components/StatusBadge";
 import { exportToCSV } from "../utils/export";
 import { formatDate, inRange } from "../utils/format";
 import { DATE_RANGES, SERVICE_PRICES } from "../constants";
+import { useMobile } from "../hooks/useMobile";
+import HourglassLoader from "../components/HourglassLoader";
 
 const COLORS = ["#22c55e","#eab308","#ef4444"];
 
@@ -21,11 +23,12 @@ export default function Dashboard() {
   const loading  = useStore(s => s.loading);
   const { theme:t } = useTheme();
   const navigate = useNavigate();
+    const isMobile = useMobile();
 
   const [range,       setRange]       = useState("All Time");
   const [selectedDay, setSelectedDay] = useState(null);
 
-  if (loading) return <Skeleton />;
+  if (loading) return <HourglassLoader />;
 
   const filtered  = bookings.filter(b => inRange(b.Date, range));
   const confirmed = filtered.filter(b => b.Status==="Confirmed").length;

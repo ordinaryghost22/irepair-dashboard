@@ -4,6 +4,8 @@ import { useTheme } from "../context/ThemeContext";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, AreaChart, Area, Cell, PieChart, Pie, Legend } from "recharts";
 import Skeleton from "../components/Skeleton";
 import { SERVICE_PRICES } from "../constants";
+import { useMobile } from "../hooks/useMobile";
+import HourglassLoader from "../components/HourglassLoader";
 
 const DAYS_FULL = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
@@ -14,6 +16,7 @@ export default function Analytics() {
   const loading  = useStore(s => s.loading);
   const { theme:t } = useTheme();
   const [tab, setTab] = useState("overview");
+  const isMobile = useMobile();
 
   const tip = { contentStyle:{ borderRadius:12, border:`1px solid ${t.border}`, background:t.cardBg, color:t.textPrimary, fontSize:13 } };
 
@@ -72,7 +75,7 @@ export default function Analytics() {
     return { busyDays, maxDay, busyHours, services, revenueByMonth, total, confirmed, rejected, pending, convRate, topKeywords, returning, oneTime, retention, weekly };
   }, [bookings, leads, chats]);
 
-  if (loading) return <Skeleton />;
+  if (loading) return <HourglassLoader />;
 
   const card = { background:t.cardBg, borderRadius:18, padding:"20px 18px", border:`1px solid ${t.border}`, boxShadow:t.cardShadow };
   const cardTitle = { fontWeight:700, fontSize:15, color:t.textPrimary, marginBottom:16 };
@@ -303,7 +306,7 @@ export default function Analytics() {
               <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
                   <Pie data={[{name:"Returning",value:analytics.returning},{name:"One-time",value:analytics.oneTime}]}
-                    cx="50%" cy="50%" innerRadius={50} outerRadius:75 paddingAngle={4} dataKey="value">
+  cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value">
                     <Cell fill="#667eea" /><Cell fill="#e2e8f0" />
                   </Pie>
                   <Tooltip {...tip} />

@@ -5,13 +5,14 @@ import Skeleton from "../components/Skeleton";
 import EmptyState from "../components/EmptyState";
 import { exportToCSV } from "../utils/export";
 import { formatDate, formatPhone, whatsappLink, timeAgo } from "../utils/format";
+import HourglassLoader from "../components/HourglassLoader";
 
 export default function Leads() {
   const leads = useStore(s => s.leads);
   const loading = useStore(s => s.loading);
   const { theme:t } = useTheme();
   const [search, setSearch] = useState("");
-  if (loading) return <Skeleton />;
+  if (loading) return <HourglassLoader />;
 
   const TH = { padding:"10px 12px", fontSize:11, fontWeight:700, color:t.thColor, textTransform:"uppercase", letterSpacing:0.8, textAlign:"left", background:t.thBg, borderBottom:`1px solid ${t.borderSub}` };
   const TD = { padding:"12px 12px", fontSize:13, color:t.tdColor, borderBottom:`1px solid ${t.borderSub}` };

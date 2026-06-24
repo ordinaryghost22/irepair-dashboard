@@ -1,6 +1,7 @@
 import { useStore } from "../store/useStore";
 import { useTheme } from "../context/ThemeContext";
 import EmptyState from "../components/EmptyState";
+import HourglassLoader from "../components/HourglassLoader";
 
 export default function AuditLog() {
   const auditLog = useStore(s => s.auditLog);

@@ -36,7 +36,7 @@ export default function GlobalSearch() {
   const statusColor = { Confirmed:"#22c55e", Pending:"#eab308", Rejected:"#ef4444" };
 
   return (
-    <div ref={ref} style={{ position:"relative", width:300 }}>
+    <div ref={ref} style={{ position:"relative", width:240 }}>
       <div style={{ position:"relative" }}>
         <span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", fontSize:14, color:t.textMuted }}>🔍</span>
         <input
