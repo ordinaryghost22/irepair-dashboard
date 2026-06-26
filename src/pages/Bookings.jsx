@@ -11,6 +11,9 @@ import { exportToCSV } from "../utils/export";
 import { formatDate, formatPhone, whatsappLink } from "../utils/format";
 import { useMobile } from "../hooks/useMobile";
 import HourglassLoader from "../components/HourglassLoader";
+import BookingManager from "../components/BookingManager";
+import { PaymentStatCards, PaymentStatusCycler } from "../components/PaymentStatus";
+import { usePaymentStatus } from "../hooks/usePaymentStatus";
 
 
 function BookingModal({ booking, onClose, onConfirm, onReject }) {
@@ -70,11 +73,17 @@ export default function Bookings() {
   const { theme:t }     = useTheme();
   const { showToast }   = useToast();
   const isMobile = useMobile();
-
+  const { changeStatus, loadingId } = usePaymentStatus();
+const deleteBooking = useStore(s => s.deleteBooking);
+const updateBookingStatus = useStore(s => s.updateBookingStatus);
   const [search,   setSearch]   = useState("");
   const [filter,   setFilter]   = useState("All");
   const [selected, setSelected] = useState(null);
   const [customer, setCustomer] = useState(null);
+  async function handleDeleteBooking(bookingId) {
+  if (!window.confirm("Delete this booking?")) return;
+  await deleteBooking(bookingId);
+}
 
   if (loading) return <HourglassLoader />;
 
@@ -114,6 +123,11 @@ export default function Bookings() {
         <button onClick={()=>exportToCSV(filtered,"bookings.csv")} style={{ padding:"9px 16px", borderRadius:12, border:`1px solid ${t.border}`, background:t.cardBg, color:t.textSecondary, fontWeight:600, fontSize:13, cursor:"pointer", whiteSpace:"nowrap" }}>⬇ Export</button>
       </div>
 
+      {/* Payment stat cards */}
+      <div style={{ marginBottom:20 }}>
+        <PaymentStatCards bookings={bookings} />
+      </div>
+
       <div className="bk-filterrow" style={{ display:"flex", gap:10, marginBottom:16 }}>
         <div style={{ position:"relative", flex:1 }}>
           <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", fontSize:15, color:t.textMuted }}>🔍</span>
@@ -136,7 +150,7 @@ export default function Bookings() {
         <div style={{ background:t.cardBg, borderRadius:18, border:`1px solid ${t.border}`, boxShadow:t.cardShadow, overflow:"hidden" }}>
           <div style={{ overflowX:"auto" }}>
             <table className="bk-table" style={{ width:"100%", borderCollapse:"collapse", minWidth:400 }}>
-              <thead><tr>{["ID","Name","Phone","Service","Date","Time","Status","Actions"].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
+              <thead><tr>{["ID","Name","Phone","Service","Date","Time","Status","Payment","Actions"].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
               <tbody>
                 {filtered.map((b,i)=>(
                   <tr key={i} style={{ cursor:"pointer", transition:"background .12s" }}
@@ -150,15 +164,38 @@ export default function Bookings() {
                     <td style={TD}>{b.Service}</td>
                     <td style={TD}>{formatDate(b.Date)}</td>
                     <td style={TD}>{b.Time}</td>
-                    <td style={TD}><StatusBadge status={b.Status} /></td>
+                  <td style={TD} onClick={e => e.stopPropagation()}>
+  <button
+    onClick={async () => {
+      const cycle = { "Pending": "Confirmed", "Confirmed": "Rejected", "Rejected": "Pending" };
+      const next = cycle[b.Status] || "Pending";
+      if (!window.confirm(`Change status to ${next}?`)) return;
+      await updateBookingStatus(b["Booking ID"], next);
+    }}
+    style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+  >
+    <StatusBadge status={b.Status} />
+  </button>
+</td>
                     <td style={TD} onClick={e=>e.stopPropagation()}>
-                      {b.Status==="Pending" && (
-                        <div style={{ display:"flex", gap:6 }}>
-                          <button onClick={()=>confirmBooking(b["Booking ID"],b.Name)} style={{ padding:"6px 12px", borderRadius:8, border:"none", background:t.name==="dark"?"rgba(34,197,94,0.15)":"#dcfce7", color:"#22c55e", fontWeight:700, fontSize:12, cursor:"pointer" }}>✓</button>
-                          <button onClick={()=>rejectBooking(b["Booking ID"],b.Name)}  style={{ padding:"6px 12px", borderRadius:8, border:"none", background:t.name==="dark"?"rgba(239,68,68,0.15)":"#fee2e2", color:"#ef4444", fontWeight:700, fontSize:12, cursor:"pointer" }}>✕</button>
-                        </div>
-                      )}
+                    <PaymentStatusCycler
+  status={b["Payment Status"]}
+  bookingId={b["Booking ID"]}
+  onChange={(bookingId) => changeStatus(bookingId, b["Payment Status"])}
+  loading={loadingId === b["Booking ID"]}
+                      />
                     </td>
+                   <td style={TD} onClick={e => e.stopPropagation()}>
+  <div style={{ display: "flex", gap: 6 }}>
+    {b.Status === "Pending" && (
+      <>
+        <button onClick={() => confirmBooking(b["Booking ID"], b.Name)} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: t.name === "dark" ? "rgba(34,197,94,0.15)" : "#dcfce7", color: "#22c55e", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>✓</button>
+        <button onClick={() => rejectBooking(b["Booking ID"], b.Name)} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: t.name === "dark" ? "rgba(239,68,68,0.15)" : "#fee2e2", color: "#ef4444", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>✕</button>
+      </>
+    )}
+    <button onClick={() => handleDeleteBooking(b["Booking ID"])} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: t.name === "dark" ? "rgba(239,68,68,0.15)" : "#fee2e2", color: "#ef4444", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🗑</button>
+  </div>
+</td>
                   </tr>
                 ))}
               </tbody>
@@ -166,6 +203,12 @@ export default function Bookings() {
           </div>
         </div>
       )}
+
+      {/* Manual booking manager */}
+      <div style={{ marginTop:32 }}>
+        <h2 style={{ fontSize:16, fontWeight:700, color:t.textPrimary, marginBottom:14 }}>Manage Bookings</h2>
+        <BookingManager />
+      </div>
     </div>
   );
 }

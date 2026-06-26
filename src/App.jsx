@@ -15,6 +15,7 @@ import AuditLog    from "./pages/AuditLog";
 import Analytics   from "./pages/Analytics";
 import Security    from "./pages/Security";
 import Settings    from "./pages/Settings";
+import OwnerBot from "./components/OwnerBot";
 
 function PrivateRoute({ children }) {
   return localStorage.getItem("auth") ? children : <Navigate to="/login" />;
@@ -56,6 +57,7 @@ export default function App() {
             </Routes>
           </SecurityProvider>
         </BrowserRouter>
+        <OwnerBot />
       </ToastProvider>
     </ThemeProvider>
   );

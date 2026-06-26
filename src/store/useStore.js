@@ -1,8 +1,7 @@
 import { create } from "zustand";
 import { useNotifStore } from "./useNotifStore";
 import { devtools } from "zustand/middleware";
-
-const BASE_URL = "http://localhost:5678/webhook";
+import { supabase } from "../lib/supabase";
 
 let fetchingRef = false;
 let prevPending = null;
@@ -22,22 +21,32 @@ export const useStore = create(devtools((set, get) => ({
     try { return JSON.parse(localStorage.getItem("irepair_audit") || "[]"); } catch { return []; }
   })(),
 
-  // ── Derived (computed inline, fast) ────────────────────────────────────────
+  // ── Derived ────────────────────────────────────────────────────────────────
   get pendingCount() { return get().bookings.filter(b => b.Status === "Pending").length; },
   get availableSlots() { return get().slots.filter(s => s.Status === "Available").length; },
 
-  // ── Fetch ──────────────────────────────────────────────────────────────────
+  // ── Fetch all from Supabase ────────────────────────────────────────────────
   fetchAll: async (silent = false, showToast = null) => {
     if (fetchingRef) return;
     fetchingRef = true;
     if (!silent) set({ loading: true });
     try {
-      const [b, s, l, wl] = await Promise.all([
-        fetch(`${BASE_URL}/get-bookings`).then(r => r.json()).catch(() => []),
-        fetch(`${BASE_URL}/get-slots`).then(r => r.json()).catch(() => []),
-        fetch(`${BASE_URL}/get-leads`).then(r => r.json()).catch(() => []),
-        fetch(`${BASE_URL}/get-waitlist`).then(r => r.json()).catch(() => []),
+      const [
+        { data: b, error: bErr },
+        { data: s, error: sErr },
+        { data: l, error: lErr },
+        { data: wl, error: wlErr },
+      ] = await Promise.all([
+        supabase.from("bookings").select("*").order("created_at", { ascending: false }),
+        supabase.from("slots").select("*").order("Date"),
+        supabase.from("leads").select("*").order("created_at", { ascending: false }),
+        supabase.from("waitlist").select("*").order("created_at", { ascending: false }),
       ]);
+
+      if (bErr) console.error("Bookings error:", bErr);
+      if (sErr) console.error("Slots error:", sErr);
+      if (lErr) console.error("Leads error:", lErr);
+      if (wlErr) console.error("Waitlist error:", wlErr);
 
       const safeB = Array.isArray(b) ? b : [];
       const pendingNow = safeB.filter(x => x.Status === "Pending").length;
@@ -61,10 +70,10 @@ export const useStore = create(devtools((set, get) => ({
       prevPending = pendingNow;
 
       set({
-        bookings: safeB.length > 0 ? safeB : get().bookings,
-        slots:    Array.isArray(s) && s.length > 0 ? s : get().slots,
-        leads:    Array.isArray(l) && l.length > 0 ? l : get().leads,
-        waitlist: Array.isArray(wl) && wl.length > 0 ? wl : get().waitlist,
+        bookings:  safeB.length > 0 ? safeB : get().bookings,
+        slots:     Array.isArray(s) && s.length > 0 ? s : get().slots,
+        leads:     Array.isArray(l) && l.length > 0 ? l : get().leads,
+        waitlist:  Array.isArray(wl) && wl.length > 0 ? wl : get().waitlist,
         lastFetch: new Date(),
       });
     } catch (err) {
@@ -75,27 +84,30 @@ export const useStore = create(devtools((set, get) => ({
     }
   },
 
-  // ── Optimistic confirm ─────────────────────────────────────────────────────
+  // ── Confirm booking ────────────────────────────────────────────────────────
   confirmBooking: async (bookingId, name, showToast) => {
-    // Instant UI update
     set(state => ({
       bookings: state.bookings.map(b =>
         b["Booking ID"] === bookingId ? { ...b, Status: "Confirmed" } : b
       ),
     }));
     try {
-      await fetch(`${BASE_URL}/action-confirm?action=confirm&bookingId=${bookingId}`);
+      const { error } = await supabase
+        .from("bookings")
+        .update({ Status: "Confirmed" })
+        .eq("Booking ID", bookingId);
+      if (error) throw error;
       get().addAudit("Confirmed", bookingId, name);
       if (showToast) showToast("Booking confirmed!");
       setTimeout(() => get().fetchAll(true, showToast), 2000);
-    } catch {
-      // Revert on failure
+    } catch (err) {
+      console.error("Confirm error:", err);
       if (showToast) showToast("Failed to confirm booking", "error");
       get().fetchAll(true, showToast);
     }
   },
 
-  // ── Optimistic reject ──────────────────────────────────────────────────────
+  // ── Reject booking ─────────────────────────────────────────────────────────
   rejectBooking: async (bookingId, name, showToast) => {
     set(state => ({
       bookings: state.bookings.map(b =>
@@ -103,16 +115,101 @@ export const useStore = create(devtools((set, get) => ({
       ),
     }));
     try {
-      await fetch(`${BASE_URL}/action-reject?action=reject&bookingId=${bookingId}`);
+      const { error } = await supabase
+        .from("bookings")
+        .update({ Status: "Rejected" })
+        .eq("Booking ID", bookingId);
+      if (error) throw error;
       get().addAudit("Rejected", bookingId, name);
       if (showToast) showToast("Booking rejected.", "error");
       setTimeout(() => get().fetchAll(true, showToast), 2000);
-    } catch {
+    } catch (err) {
+      console.error("Reject error:", err);
       if (showToast) showToast("Failed to reject booking", "error");
       get().fetchAll(true, showToast);
     }
   },
 
+  // ── Payment status ─────────────────────────────────────────────────────────
+  updateBookingPayment: async (bookingId, paymentStatus) => {
+    set(state => ({
+      bookings: state.bookings.map(b =>
+        b["Booking ID"] === bookingId ? { ...b, "Payment Status": paymentStatus } : b
+      ),
+    }));
+    const { error } = await supabase
+      .from("bookings")
+      .update({ "Payment Status": paymentStatus })
+      .eq("Booking ID", bookingId);
+    if (error) console.error("Payment update error:", error);
+  },
+
+  // ── Add booking ────────────────────────────────────────────────────────────
+  addBooking: async (booking) => {
+    const row = {
+      "Booking ID":     booking.id,
+      "Name":           booking.name,
+      "Phone":          booking.phone,
+      "Device":         booking.device,
+      "Service":        booking.issue,
+      "Issue":          booking.issue,
+      "Date":           booking.date,
+      "Time":           booking.time,
+      "Payment Status": booking.paymentStatus || "Unpaid",
+      "Notes":          booking.notes || "",
+      "Status":         "Confirmed",
+    };
+    set(state => ({ bookings: [row, ...state.bookings] }));
+    const { error } = await supabase.from("bookings").insert(row);
+    if (error) console.error("Add booking error:", error);
+  },
+
+  // ── Update booking ─────────────────────────────────────────────────────────
+  updateBooking: async (bookingId, updates) => {
+    set(state => ({
+      bookings: state.bookings.map(b =>
+        b["Booking ID"] === bookingId ? { ...b, ...updates } : b
+      ),
+    }));
+    const { error } = await supabase
+      .from("bookings")
+      .update({
+        "Name":           updates.name,
+        "Phone":          updates.phone,
+        "Device":         updates.device,
+        "Issue":          updates.issue,
+        "Date":           updates.date,
+        "Time":           updates.time,
+        "Payment Status": updates.paymentStatus,
+        "Notes":          updates.notes,
+      })
+      .eq("Booking ID", bookingId);
+    if (error) console.error("Update booking error:", error);
+  },
+
+  // ── Delete booking ─────────────────────────────────────────────────────────
+  deleteBooking: async (bookingId) => {
+    set(state => ({
+      bookings: state.bookings.filter(b => b["Booking ID"] !== bookingId),
+    }));
+    const { error } = await supabase
+      .from("bookings")
+      .delete()
+      .eq("Booking ID", bookingId);
+    if (error) console.error("Delete booking error:", error);
+  },
+updateBookingStatus: async (bookingId, status) => {
+  set(state => ({
+    bookings: state.bookings.map(b =>
+      b["Booking ID"] === bookingId ? { ...b, Status: status } : b
+    ),
+  }));
+  const { error } = await supabase
+    .from("bookings")
+    .update({ Status: status })
+    .eq("Booking ID", bookingId);
+  if (error) console.error("Status update error:", error);
+},
   // ── Audit log ──────────────────────────────────────────────────────────────
   addAudit: (action, bookingId, name) => {
     const entry = { action, bookingId, name, time: new Date().toLocaleString() };
@@ -124,6 +221,7 @@ export const useStore = create(devtools((set, get) => ({
   },
 
   // ── UI actions ─────────────────────────────────────────────────────────────
-  clearBadge: () => set({ newBadge: 0 }),
+  clearBadge:  () => set({ newBadge: 0 }),
   setIsPaused: (v) => set({ isPaused: v }),
+
 }), { name: "iRepairStore" }));
