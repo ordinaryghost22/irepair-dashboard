@@ -14,9 +14,19 @@ const GROQ_MODEL = "llama-3.3-70b-versatile";
 function buildContext(bookings, slots, leads) {
   const today = new Date().toISOString().split("T")[0];
 
-  const upcoming = bookings.filter(b => b.date >= today).slice(0, 20);
-  const recent   = bookings.filter(b => b.date < today).slice(-10);
-  const unpaid   = bookings.filter(b => b.paymentStatus === "Unpaid");
+  const upcoming = bookings.filter(b => {
+    const d = (b.Date || b.date || "").slice(0, 10);
+    return d >= today;
+  }).slice(0, 20);
+
+  const recent = bookings.filter(b => {
+    const d = (b.Date || b.date || "").slice(0, 10);
+    return d < today;
+  }).slice(-10);
+
+  const unpaid = bookings.filter(b =>
+    (b["Payment Status"] || b.paymentStatus || "").toLowerCase() === "unpaid"
+  );
 
   const slotSummary = slots.slice(0, 14).map(s =>
     `${s.date}: ${s.available} available, ${s.booked} booked`
@@ -27,17 +37,17 @@ function buildContext(bookings, slots, leads) {
 
 UPCOMING BOOKINGS (next 20):
 ${upcoming.map(b =>
-  `- ${b.date} ${b.time} | ${b.name} | ${b.phone} | ${b.device} | ${b.issue} | ${b.paymentStatus || "Unpaid"}`
+  `- ${b.Date || b.date} ${b.Time || b.time} | ${b.Name || b.name} | ${b.Phone || b.phone} | ${b.Device || b.device} | ${b.Service || b.service} | ${b["Payment Status"] || b.paymentStatus || "Unpaid"} | ${b.Status || b.status}`
 ).join("\n") || "None"}
 
 RECENT COMPLETED BOOKINGS (last 10):
 ${recent.map(b =>
-  `- ${b.date} | ${b.name} | ${b.device} | ${b.issue} | ${b.paymentStatus || "?"}`
+  `- ${b.Date || b.date} | ${b.Name || b.name} | ${b.Device || b.device} | ${b.Service || b.service} | ${b["Payment Status"] || b.paymentStatus || "?"}`
 ).join("\n") || "None"}
 
 UNPAID BOOKINGS (${unpaid.length} total):
 ${unpaid.slice(0, 10).map(b =>
-  `- ${b.date} | ${b.name} | ${b.phone} | ${b.device}`
+  `- ${b.Date || b.date} | ${b.Name || b.name} | ${b.Phone || b.phone} | ${b.Device || b.device}`
 ).join("\n") || "None"}
 
 SLOT AVAILABILITY (next 14 days):
@@ -45,7 +55,7 @@ ${slotSummary || "No slot data"}
 
 LEADS (${leads.length} total, last 5):
 ${leads.slice(-5).map(l =>
-  `- ${l.name} | ${l.phone} | ${l.device} | ${l.issue}`
+  `- ${l.name || l.Name} | ${l.phone || l.Phone} | ${l.device || l.Device} | ${l.issue || l.Issue}`
 ).join("\n") || "None"}
 `.trim();
 }
