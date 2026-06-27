@@ -3,97 +3,6 @@ import { useState, useRef, useEffect } from "react";
 import { useStore } from "../store/useStore";
 import { useTheme } from "../context/ThemeContext";
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const GROQ_MODEL = "llama-3.3-70b-versatile";
-
-function buildContext(bookings, slots, leads) {
-  const today = new Date().toISOString().split("T")[0];
-
-  const upcoming = bookings.filter(b => {
-    const d = (b.Date || b.date || "").slice(0, 10);
-    return d >= today;
-  }).slice(0, 20);
-
-  const recent = bookings.filter(b => {
-    const d = (b.Date || b.date || "").slice(0, 10);
-    return d < today;
-  }).slice(-10);
-
-  const unpaid = bookings.filter(b =>
-    (b["Payment Status"] || b.paymentStatus || "").toLowerCase() === "unpaid"
-  );
-
-  const slotSummary = slots.slice(0, 14).map(s =>
-    `${s.date}: ${s.available} available, ${s.booked} booked`
-  ).join("\n");
-
-  return `
-=== iRepair Shop — Live Data (as of ${today}) ===
-
-UPCOMING BOOKINGS (next 20):
-${upcoming.map(b =>
-  `- ${b.Date || b.date} ${b.Time || b.time} | ${b.Name || b.name} | ${b.Phone || b.phone} | ${b.Device || b.device} | ${b.Service || b.service} | ${b["Payment Status"] || b.paymentStatus || "Unpaid"} | ${b.Status || b.status}`
-).join("\n") || "None"}
-
-RECENT COMPLETED BOOKINGS (last 10):
-${recent.map(b =>
-  `- ${b.Date || b.date} | ${b.Name || b.name} | ${b.Device || b.device} | ${b.Service || b.service} | ${b["Payment Status"] || b.paymentStatus || "?"}`
-).join("\n") || "None"}
-
-UNPAID BOOKINGS (${unpaid.length} total):
-${unpaid.slice(0, 10).map(b =>
-  `- ${b.Date || b.date} | ${b.Name || b.name} | ${b.Phone || b.phone} | ${b.Device || b.device}`
-).join("\n") || "None"}
-
-SLOT AVAILABILITY (next 14 days):
-${slotSummary || "No slot data"}
-
-LEADS (${leads.length} total, last 5):
-${leads.slice(-5).map(l =>
-  `- ${l.name || l.Name} | ${l.phone || l.Phone} | ${l.device || l.Device} | ${l.issue || l.Issue}`
-).join("\n") || "None"}
-`.trim();
-}
-
-const SYSTEM_PROMPT = (context) => `
-You are iRepair Assistant — the smartest employee at an iPhone repair shop in Lahore called iRepair.
-
-RULES:
-- You have REAL live shop data below. ALWAYS use it to answer. Never say you don't have access.
-- Give SPECIFIC answers using the actual names, numbers, dates from the data.
-- If owner asks "who hasn't paid" — list the actual names and phones.
-- If owner asks "today's bookings" — list them with time, name, device.
-- If owner asks for a summary — give real numbers from the data, not generic advice.
-- Be concise and direct. No fluff. No "Great question!". No unnecessary explanations.
-- If data shows 0 bookings, say "Abhi koi booking nahi hai" — don't make things up.
-- Language: Owner writes Roman Urdu → reply Roman Urdu. Owner writes English → reply English.
-- Format lists with dashes. Bold important info using *asterisks*.
-
-YOU CAN ANSWER:
-- Kaun kaun aaj aa raha hai aur kab
-- Kiska payment pending hai (name + phone dena)
-- Kitne slots available hain
-- Is week kitni bookings hain
-- Leads mein se kisko follow up karna chahiye
-- Overall shop performance summary
-- Koi specific customer ki details
-
-NEVER:
-- Say "I don't have access to that data"
-- Give generic business advice when specific data is available
-- Make up names or numbers
-- Be overly formal or robotic
-
-${context}
-`.trim();
-
-const QUICK_PROMPTS = [
-  "Aaj kaun aa raha hai?",
-  "Unpaid bookings?",
-  "This week summary",
-  "Available slots?",
-];
-
 export default function OwnerBot() {
   const { theme: t } = useTheme();
   const bookings = useStore(s => s.bookings || []);
@@ -118,50 +27,40 @@ export default function OwnerBot() {
   }, [open]);
 
   async function sendMessage(text) {
-    const msg = (text || input).trim();
-    if (!msg || loading) return;
+  const msg = (text || input).trim();
+  if (!msg || loading) return;
 
-    const userMsg = { role: "user", content: msg };
-    setMessages(prev => [...prev, userMsg]);
-    setInput("");
-    setLoading(true);
+  const userMsg = { role: "user", content: msg };
+  setMessages(prev => [...prev, userMsg]);
+  setInput("");
+  setLoading(true);
 
-    try {
-      const context = buildContext(bookings, slots, leads);
-      const history = [...messages, userMsg].map(m => ({
-        role: m.role, content: m.content
-      }));
+  try {
+    const history = [...messages, userMsg].map(m => ({
+      role: m.role, content: m.content
+    }));
 
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${GROQ_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: GROQ_MODEL,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT(context) },
-            ...history,
-          ],
-          max_tokens: 600,
-          temperature: 0.4,
-        }),
-      });
+    const res = await fetch("https://irepair-backend-production.up.railway.app/chat/owner", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${localStorage.getItem("irepair_token")}`
+      },
+      body: JSON.stringify({ messages: history }),
+    });
 
-      if (!res.ok) throw new Error(`Groq error ${res.status}`);
-      const data = await res.json();
-      const reply = data.choices?.[0]?.message?.content || "Sorry, no response.";
-      setMessages(prev => [...prev, { role: "assistant", content: reply }]);
-    } catch (err) {
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        content: `Error: ${err.message}. Check your VITE_GROQ_API_KEY.`
-      }]);
-    } finally {
-      setLoading(false);
-    }
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+    const data = await res.json();
+    setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
+  } catch (err) {
+    setMessages(prev => [...prev, {
+      role: "assistant",
+      content: `Error: ${err.message}`
+    }]);
+  } finally {
+    setLoading(false);
   }
+}
 
   const isDark = t.name === "dark";
 
