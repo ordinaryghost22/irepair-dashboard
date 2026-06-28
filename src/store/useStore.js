@@ -145,7 +145,7 @@ export const useStore = create(devtools((set, get) => ({
     try {
       await apiCall(`/bookings/${encodeURIComponent(bookingId)}/payment`, {
         method: "PUT",
-        body: JSON.stringify({ "Payment Status": paymentStatus }),
+        body: JSON.stringify({ payment_status: paymentStatus }),
       });
     } catch (err) {
       console.error("Payment update error:", err);
