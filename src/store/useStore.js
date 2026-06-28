@@ -1,17 +1,35 @@
 import { create } from "zustand";
 import { useNotifStore } from "./useNotifStore";
 import { devtools } from "zustand/middleware";
-import { supabase } from "../lib/supabase";
+
+const API = import.meta.env.VITE_API_URL || "https://irepair-backend-production.up.railway.app";
 
 let fetchingRef = false;
 let prevPending = null;
+
+// ── Auth helper ───────────────────────────────────────────────────────────────
+const apiCall = async (path, options = {}) => {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `API error ${res.status}`);
+  }
+  return res.json();
+};
 
 export const useStore = create(devtools((set, get) => ({
   // ── State ──────────────────────────────────────────────────────────────────
   bookings:  [],
   slots:     [],
   leads:     [],
-  waitlist:  [],
   chats:     [],
   loading:   true,
   newBadge:  0,
@@ -25,29 +43,13 @@ export const useStore = create(devtools((set, get) => ({
   get pendingCount() { return get().bookings.filter(b => b.Status === "Pending").length; },
   get availableSlots() { return get().slots.filter(s => s.Status === "Available").length; },
 
-  // ── Fetch all from Supabase ────────────────────────────────────────────────
+  // ── Fetch all from FastAPI ─────────────────────────────────────────────────
   fetchAll: async (silent = false, showToast = null) => {
     if (fetchingRef) return;
     fetchingRef = true;
     if (!silent) set({ loading: true });
     try {
-      const [
-        { data: b, error: bErr },
-        { data: s, error: sErr },
-        { data: l, error: lErr },
-        { data: wl, error: wlErr },
-      ] = await Promise.all([
-        supabase.from("bookings").select("*").order("created_at", { ascending: false }),
-        supabase.from("slots").select("*").order("Date"),
-        supabase.from("leads").select("*").order("created_at", { ascending: false }),
-        supabase.from("waitlist").select("*").order("created_at", { ascending: false }),
-      ]);
-
-      if (bErr) console.error("Bookings error:", bErr);
-      if (sErr) console.error("Slots error:", sErr);
-      if (lErr) console.error("Leads error:", lErr);
-      if (wlErr) console.error("Waitlist error:", wlErr);
-
+      
       const safeB = Array.isArray(b) ? b : [];
       const pendingNow = safeB.filter(x => x.Status === "Pending").length;
 
@@ -73,7 +75,6 @@ export const useStore = create(devtools((set, get) => ({
         bookings:  safeB.length > 0 ? safeB : get().bookings,
         slots:     Array.isArray(s) && s.length > 0 ? s : get().slots,
         leads:     Array.isArray(l) && l.length > 0 ? l : get().leads,
-        waitlist:  Array.isArray(wl) && wl.length > 0 ? wl : get().waitlist,
         lastFetch: new Date(),
       });
     } catch (err) {
@@ -92,11 +93,10 @@ export const useStore = create(devtools((set, get) => ({
       ),
     }));
     try {
-      const { error } = await supabase
-        .from("bookings")
-        .update({ Status: "Confirmed" })
-        .eq("Booking ID", bookingId);
-      if (error) throw error;
+      await apiCall(`/bookings/${encodeURIComponent(bookingId)}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ Status: "Confirmed" }),
+      });
       get().addAudit("Confirmed", bookingId, name);
       if (showToast) showToast("Booking confirmed!");
       setTimeout(() => get().fetchAll(true, showToast), 2000);
@@ -115,11 +115,10 @@ export const useStore = create(devtools((set, get) => ({
       ),
     }));
     try {
-      const { error } = await supabase
-        .from("bookings")
-        .update({ Status: "Rejected" })
-        .eq("Booking ID", bookingId);
-      if (error) throw error;
+      await apiCall(`/bookings/${encodeURIComponent(bookingId)}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ Status: "Rejected" }),
+      });
       get().addAudit("Rejected", bookingId, name);
       if (showToast) showToast("Booking rejected.", "error");
       setTimeout(() => get().fetchAll(true, showToast), 2000);
@@ -137,11 +136,14 @@ export const useStore = create(devtools((set, get) => ({
         b["Booking ID"] === bookingId ? { ...b, "Payment Status": paymentStatus } : b
       ),
     }));
-    const { error } = await supabase
-      .from("bookings")
-      .update({ "Payment Status": paymentStatus })
-      .eq("Booking ID", bookingId);
-    if (error) console.error("Payment update error:", error);
+    try {
+      await apiCall(`/bookings/${encodeURIComponent(bookingId)}/payment`, {
+        method: "PUT",
+        body: JSON.stringify({ "Payment Status": paymentStatus }),
+      });
+    } catch (err) {
+      console.error("Payment update error:", err);
+    }
   },
 
   // ── Add booking ────────────────────────────────────────────────────────────
@@ -160,8 +162,14 @@ export const useStore = create(devtools((set, get) => ({
       "Status":         "Confirmed",
     };
     set(state => ({ bookings: [row, ...state.bookings] }));
-    const { error } = await supabase.from("bookings").insert(row);
-    if (error) console.error("Add booking error:", error);
+    try {
+      await apiCall("/bookings", {
+        method: "POST",
+        body: JSON.stringify(row),
+      });
+    } catch (err) {
+      console.error("Add booking error:", err);
+    }
   },
 
   // ── Update booking ─────────────────────────────────────────────────────────
@@ -171,20 +179,23 @@ export const useStore = create(devtools((set, get) => ({
         b["Booking ID"] === bookingId ? { ...b, ...updates } : b
       ),
     }));
-    const { error } = await supabase
-      .from("bookings")
-      .update({
-        "Name":           updates.name,
-        "Phone":          updates.phone,
-        "Device":         updates.device,
-        "Issue":          updates.issue,
-        "Date":           updates.date,
-        "Time":           updates.time,
-        "Payment Status": updates.paymentStatus,
-        "Notes":          updates.notes,
-      })
-      .eq("Booking ID", bookingId);
-    if (error) console.error("Update booking error:", error);
+    try {
+      await apiCall(`/bookings/${encodeURIComponent(bookingId)}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          "Name":           updates.name,
+          "Phone":          updates.phone,
+          "Device":         updates.device,
+          "Issue":          updates.issue,
+          "Date":           updates.date,
+          "Time":           updates.time,
+          "Payment Status": updates.paymentStatus,
+          "Notes":          updates.notes,
+        }),
+      });
+    } catch (err) {
+      console.error("Update booking error:", err);
+    }
   },
 
   // ── Delete booking ─────────────────────────────────────────────────────────
@@ -192,24 +203,32 @@ export const useStore = create(devtools((set, get) => ({
     set(state => ({
       bookings: state.bookings.filter(b => b["Booking ID"] !== bookingId),
     }));
-    const { error } = await supabase
-      .from("bookings")
-      .delete()
-      .eq("Booking ID", bookingId);
-    if (error) console.error("Delete booking error:", error);
+    try {
+      await apiCall(`/bookings/${encodeURIComponent(bookingId)}`, {
+        method: "DELETE",
+      });
+    } catch (err) {
+      console.error("Delete booking error:", err);
+    }
   },
-updateBookingStatus: async (bookingId, status) => {
-  set(state => ({
-    bookings: state.bookings.map(b =>
-      b["Booking ID"] === bookingId ? { ...b, Status: status } : b
-    ),
-  }));
-  const { error } = await supabase
-    .from("bookings")
-    .update({ Status: status })
-    .eq("Booking ID", bookingId);
-  if (error) console.error("Status update error:", error);
-},
+
+  // ── Update booking status ──────────────────────────────────────────────────
+  updateBookingStatus: async (bookingId, status) => {
+    set(state => ({
+      bookings: state.bookings.map(b =>
+        b["Booking ID"] === bookingId ? { ...b, Status: status } : b
+      ),
+    }));
+    try {
+      await apiCall(`/bookings/${encodeURIComponent(bookingId)}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ Status: status }),
+      });
+    } catch (err) {
+      console.error("Status update error:", err);
+    }
+  },
+
   // ── Audit log ──────────────────────────────────────────────────────────────
   addAudit: (action, bookingId, name) => {
     const entry = { action, bookingId, name, time: new Date().toLocaleString() };
