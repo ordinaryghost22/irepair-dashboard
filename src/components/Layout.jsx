@@ -7,6 +7,7 @@ import { useSwipeNav } from "../hooks/useSwipeNav";
 import GlobalSearch from "./GlobalSearch";
 import NotifBell from "./NotifBell";
 import { useMobile } from "../hooks/useMobile";
+import CustomerBot from "./CustomerBot";
 
 export default function Layout({ children }) {
   const location = useLocation();
@@ -137,6 +138,7 @@ export default function Layout({ children }) {
           </button>
         </div>
       </div>
+      <CustomerBot />
     </div>
   );
 }
