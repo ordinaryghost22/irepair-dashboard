@@ -3,6 +3,12 @@ import { useState, useRef, useEffect } from "react";
 import { useStore } from "../store/useStore";
 import { useTheme } from "../context/ThemeContext";
 
+const QUICK_PROMPTS = [
+  "Today's bookings?",
+  "Who hasn't paid?",
+  "Available slots?",
+  "Recent leads?",
+];
 export default function OwnerBot() {
   const { theme: t } = useTheme();
   const bookings = useStore(s => s.bookings || []);
