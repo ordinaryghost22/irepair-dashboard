@@ -9,7 +9,7 @@ let prevPending = null;
 
 // ── Auth helper ───────────────────────────────────────────────────────────────
 const apiCall = async (path, options = {}) => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("irepair_token");
   const res = await fetch(`${API}${path}`, {
     ...options,
     headers: {
