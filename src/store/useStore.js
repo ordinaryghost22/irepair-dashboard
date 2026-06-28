@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { useNotifStore } from "./useNotifStore";
 import { devtools } from "zustand/middleware";
 
-const API = import.meta.env.VITE_API_URL || "https://irepair-backend-production.up.railway.app";
+const API = "https://irepair-backend-production.up.railway.app";
 
 let fetchingRef = false;
 let prevPending = null;
