@@ -52,7 +52,7 @@ export default function OwnerBot() {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${localStorage.getItem("irepair_token")}`
       },
-      body: JSON.stringify({ messages: history }),
+      body: JSON.stringify({ messages: history, context: { bookings, slots, leads } }),
     });
 
     if (!res.ok) throw new Error(`API error ${res.status}`);
