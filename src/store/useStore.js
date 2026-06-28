@@ -30,6 +30,7 @@ export const useStore = create(devtools((set, get) => ({
   bookings:  [],
   slots:     [],
   leads:     [],
+  waitlist:  [],
   chats:     [],
   loading:   true,
   newBadge:  0,
@@ -49,7 +50,12 @@ export const useStore = create(devtools((set, get) => ({
     fetchingRef = true;
     if (!silent) set({ loading: true });
     try {
-      
+      const [b, s, l] = await Promise.all([
+        apiCall("/bookings").catch(e => { console.error("Bookings error:", e); return []; }),
+        apiCall("/slots").catch(e => { console.error("Slots error:", e); return []; }),
+        apiCall("/leads").catch(e => { console.error("Leads error:", e); return []; }),
+      ]);
+
       const safeB = Array.isArray(b) ? b : [];
       const pendingNow = safeB.filter(x => x.Status === "Pending").length;
 
