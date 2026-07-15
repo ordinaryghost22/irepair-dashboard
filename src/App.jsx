@@ -16,6 +16,7 @@ import Analytics   from "./pages/Analytics";
 import Security    from "./pages/Security";
 import Settings    from "./pages/Settings";
 import OwnerBot from "./components/OwnerBot";
+import PublicBooking from "./pages/PublicBooking";
 
 function PrivateRoute({ children }) {
   return localStorage.getItem("auth") ? children : <Navigate to="/login" />;
@@ -34,6 +35,7 @@ export default function App() {
           <SecurityProvider>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/book"  element={<PublicBooking />} />
               <Route path="/*" element={
                 <PrivateRoute>
                   <AppInit>
