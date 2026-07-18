@@ -3,7 +3,6 @@ import { useTheme } from "../context/ThemeContext";
 
 const API = "https://irepair-backend-production.up.railway.app";
 
-// ── Device catalog — seed with common models, add more anytime ────────────
 const DEVICES = [
   { id: "iphone-16-pro-max", model: "iPhone 16 Pro Max", tier: "Flagship" },
   { id: "iphone-16-pro",     model: "iPhone 16 Pro",     tier: "Flagship" },
@@ -33,7 +32,6 @@ const DEVICES = [
   { id: "samsung-a34",       model: "Samsung Galaxy A34",       tier: "Budget" },
 ];
 
-// ── Tier pricing matrix — small, easy to maintain, scales to any device ────
 const TIER_PRICES = {
   Budget:   { "Screen Repair": 3000,  "Battery Replacement": 1500, "Software Fix": 1000, "Water Damage": 5000,  "Charging Port": 1500, "Camera Repair": 2000 },
   Mid:      { "Screen Repair": 6000,  "Battery Replacement": 2000, "Software Fix": 1500, "Water Damage": 7000,  "Charging Port": 2000, "Camera Repair": 3000 },
@@ -88,6 +86,7 @@ function WrenchIcon({ size = 24, color = "#fff" }) {
 const IconBase = ({ children, size = 20, color }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{children}</svg>
 );
+
 const ICONS = {
   screen:   (p) => <IconBase {...p}><rect x="6" y="3" width="12" height="18" rx="2" /><line x1="10" y1="19" x2="14" y2="19" /></IconBase>,
   battery:  (p) => <IconBase {...p}><rect x="3" y="8" width="16" height="8" rx="1.5" /><line x1="21" y1="10.5" x2="21" y2="13.5" /><line x1="7" y1="11" x2="7" y2="13" /></IconBase>,
@@ -101,6 +100,7 @@ const ICONS = {
   camera2:  (p) => <IconBase {...p}><rect x="3" y="7" width="18" height="13" rx="2" /><circle cx="12" cy="13.5" r="3.3" /></IconBase>,
   phone:    (p) => <IconBase {...p}><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 9.7a16 16 0 0 0 6.3 6.3l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2Z" /></IconBase>,
   user:     (p) => <IconBase {...p}><circle cx="12" cy="8" r="3.5" /><path d="M4 20c0-4 3.5-6.5 8-6.5s8 2.5 8 6.5" /></IconBase>,
+  email:    (p) => <IconBase {...p}><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m2 7 10 7 10-7" /></IconBase>,
   chip:     (p) => <IconBase {...p}><rect x="7" y="7" width="10" height="10" rx="1.5" /><line x1="7" y1="3" x2="7" y2="7" /><line x1="12" y1="3" x2="12" y2="7" /><line x1="17" y1="3" x2="17" y2="7" /><line x1="7" y1="17" x2="7" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /><line x1="17" y1="17" x2="17" y2="21" /><line x1="3" y1="7" x2="7" y2="7" /><line x1="3" y1="12" x2="7" y2="12" /><line x1="3" y1="17" x2="7" y2="17" /><line x1="17" y1="7" x2="21" y2="7" /><line x1="17" y1="12" x2="21" y2="12" /><line x1="17" y1="17" x2="21" y2="17" /></IconBase>,
   chat:     (p) => <IconBase {...p}><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z" /></IconBase>,
 };
@@ -234,10 +234,7 @@ export default function PublicBooking() {
   }, []);
 
   function handleChange(field, value) { setForm(f => ({ ...f, [field]: value })); }
-
-  function handleDeviceSelect(model, tier) {
-    setForm(f => ({ ...f, device: model, deviceTier: tier }));
-  }
+  function handleDeviceSelect(model, tier) { setForm(f => ({ ...f, device: model, deviceTier: tier })); }
 
   function handlePhoto(e) {
     const file = e.target.files?.[0];
@@ -250,7 +247,6 @@ export default function PublicBooking() {
   const slotsByDate = {};
   slots.forEach(s => { if (!s.Date) return; (slotsByDate[s.Date] ||= []).push(s.Time); });
   const availableDates = Object.keys(slotsByDate).sort();
-
   const tierPrices = form.deviceTier ? TIER_PRICES[form.deviceTier] : null;
 
   function validateStep(n) {
@@ -295,25 +291,17 @@ export default function PublicBooking() {
     setError("");
 
     const booking = {
-      "Booking ID": generateId(),
-      "Name": form.name,
-      "Phone": form.phone,
-      "Email": form.email,
-      "Device": form.device,
-      "Device Tier": form.deviceTier || "Unknown",
-      "IMEI": form.imei,
-      "Issue": form.issue,
-      "Contact Preference": form.contactPref,
-      "Heard From": form.heardFrom,
-      "Backup Confirmed": form.backupConfirmed,
-      "Passcode At Dropoff": form.passcodeAtDropoff,
-      "Service": form.service,
-      "Date": form.date,
-      "Time": form.time,
-      "Notes": form.notes,
-      "Status": "Pending",
-      "Payment Status": "Unpaid",
-      "Source": "Widget",
+      name: form.name,
+      phone: form.phone,
+      email: form.email || null,
+      device: form.device,
+      service: form.service,
+      issue: form.issue,
+      date: form.date,
+      time: form.time,
+      status: "Pending",
+      payment_status: "Unpaid",
+      notes: form.notes || null,
     };
 
     try {
@@ -340,7 +328,7 @@ export default function PublicBooking() {
   };
   const focusHandlers = {
     onFocus: e => { e.target.style.border = `1.5px solid ${t.accent}`; e.target.style.boxShadow = `0 0 0 4px ${t.accentGlow}`; },
-    onBlur: e => { e.target.style.border = `1.5px solid ${t.border}`; e.target.style.boxShadow = "none"; },
+    onBlur:  e => { e.target.style.border = `1.5px solid ${t.border}`; e.target.style.boxShadow = "none"; },
   };
   const label = { display: "block", fontSize: 12, fontWeight: 700, color: t.textSecondary, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 8 };
 
@@ -400,8 +388,13 @@ export default function PublicBooking() {
             We've received your request for <strong style={{ color: t.textPrimary }}>{form.device}</strong> — {form.service} on{" "}
             <strong style={{ color: t.textPrimary }}>{form.date}</strong> at <strong style={{ color: t.textPrimary }}>{form.time}</strong>.
           </div>
-          <div style={{ marginTop: 18, padding: "12px 16px", background: dark ? "rgba(102,126,234,0.1)" : "#eef1ff", borderRadius: 12, fontSize: 13, color: t.accent, fontWeight: 600 }}>
-            📱 We'll confirm on {form.phone} via {form.contactPref} shortly
+          {form.email && (
+            <div style={{ marginTop: 14, padding: "12px 16px", background: dark ? "rgba(34,197,94,0.1)" : "#f0fdf4", borderRadius: 12, fontSize: 13, color: "#16a34a", fontWeight: 600, border: "1px solid rgba(34,197,94,0.2)" }}>
+              📧 Confirmation email sent to {form.email}
+            </div>
+          )}
+          <div style={{ marginTop: 12, padding: "12px 16px", background: dark ? "rgba(102,126,234,0.1)" : "#eef1ff", borderRadius: 12, fontSize: 13, color: t.accent, fontWeight: 600 }}>
+            📱 We'll also confirm on {form.phone} via {form.contactPref} shortly
           </div>
         </div>
       </div>
@@ -449,10 +442,23 @@ export default function PublicBooking() {
                 <label style={label}>Phone Number</label>
                 <input style={inputStyle} {...focusHandlers} value={form.phone} onChange={e => handleChange("phone", e.target.value)} placeholder="0300-1234567" />
               </div>
+
+              {/* ── EMAIL FIELD ── */}
               <div style={{ marginBottom: 18 }}>
-                <label style={label}>Email <span style={{ textTransform: "none", fontWeight: 400, color: t.textMuted }}>(optional — for booking confirmations)</span></label>
-                <input type="email" style={inputStyle} {...focusHandlers} value={form.email} onChange={e => handleChange("email", e.target.value)} placeholder="you@email.com" />
+                <label style={label}>
+                  Email Address{" "}
+                  <span style={{ textTransform: "none", fontWeight: 400, color: t.textMuted }}>(optional — for booking confirmation)</span>
+                </label>
+                <input
+                  type="email"
+                  style={inputStyle}
+                  {...focusHandlers}
+                  value={form.email}
+                  onChange={e => handleChange("email", e.target.value)}
+                  placeholder="you@email.com"
+                />
               </div>
+
               <div style={{ marginBottom: 18 }}>
                 <label style={label}>Preferred Contact</label>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -599,13 +605,14 @@ export default function PublicBooking() {
               <label style={{ ...label, marginBottom: 12 }}>Review Your Request</label>
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
                 {[
-                  ["user", "Name", form.name],
-                  ["phone", "Phone", `${form.phone} (${form.contactPref})`],
-                  ["screen", "Device", form.device + (form.deviceTier ? ` · ${form.deviceTier}` : "")],
-                  ["software", "Issue", form.issue],
+                  ["user",    "Name",       form.name],
+                  ["phone",   "Phone",      `${form.phone} (${form.contactPref})`],
+                  ["email",   "Email",      form.email || "Not provided"],
+                  ["screen",  "Device",     form.device + (form.deviceTier ? ` · ${form.deviceTier}` : "")],
+                  ["software","Issue",      form.issue],
                   [SERVICE_META[form.service]?.icon || "screen", "Service", `${form.service}${tierPrices ? ` — ₨${tierPrices[form.service]?.toLocaleString()}` : " — Quote pending"}`],
-                  ["bolt", "Date & Time", `${form.date} at ${form.time}`],
-                  ["camera2", "Photo", form.photo ? form.photo.name : "Not attached"],
+                  ["bolt",    "Date & Time",`${form.date} at ${form.time}`],
+                  ["camera2", "Photo",      form.photo ? form.photo.name : "Not attached"],
                 ].map(([icon, k, v]) => (
                   <div key={k} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 14px", background: dark ? "rgba(255,255,255,0.03)" : "#f8f9fe", borderRadius: 12, border: `1px solid ${t.border}` }}>
                     <div style={{ width: 28, height: 28, borderRadius: 8, background: dark ? "rgba(255,255,255,0.06)" : "#eef1ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>

@@ -31,6 +31,8 @@ export async function login(username, password) {
 
 // Bookings
 export const getBookings = () => apiFetch("/bookings/");
+export const getBookingHistory = (bookingId) =>
+  apiFetch(`/bookings/${encodeURIComponent(bookingId)}/history`);
 export const createBooking = (booking) => apiFetch("/bookings/", { method: "POST", body: JSON.stringify(booking) });
 export const updateBooking = (id, data) => apiFetch(`/bookings/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const deleteBooking = (id) => apiFetch(`/bookings/${id}`, { method: "DELETE" });

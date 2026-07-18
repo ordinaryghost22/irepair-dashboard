@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useStore } from "../store/useStore";
 import { useTheme } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
@@ -7,6 +7,7 @@ import Modal from "../components/Modal";
 import StatusBadge from "../components/StatusBadge";
 import EmptyState from "../components/EmptyState";
 import CustomerHistory from "../components/CustomerHistory";
+import ConversationHistory from "../components/ConversationHistory";
 import { exportToCSV } from "../utils/export";
 import { formatDate, formatPhone, whatsappLink } from "../utils/format";
 import { useMobile } from "../hooks/useMobile";
@@ -18,6 +19,12 @@ import { usePaymentStatus } from "../hooks/usePaymentStatus";
 
 function BookingModal({ booking, onClose, onConfirm, onReject }) {
   const { theme:t } = useTheme();
+  const [tab, setTab] = useState("details");
+
+  useEffect(() => {
+    setTab("details");
+  }, [booking?.["Booking ID"]]);
+
   if (!booking) return null;
 
   const row = (icon, label, val) => val ? (
@@ -30,35 +37,74 @@ function BookingModal({ booking, onClose, onConfirm, onReject }) {
     </div>
   ) : null;
 
+  const tabBtn = (id, label) => (
+    <button
+      key={id}
+      type="button"
+      onClick={() => setTab(id)}
+      style={{
+        flex: 1,
+        padding: "9px 12px",
+        borderRadius: 10,
+        fontSize: 12,
+        fontWeight: 700,
+        cursor: "pointer",
+        border: tab === id ? "1px solid transparent" : `1px solid ${t.border}`,
+        background: tab === id ? "linear-gradient(135deg,#667eea,#764ba2)" : t.cardBg,
+        color: tab === id ? "#fff" : t.textSecondary,
+        boxShadow: tab === id ? "0 4px 16px rgba(102,126,234,.3)" : "none",
+      }}
+    >
+      {label}
+    </button>
+  );
+
   return (
-    <Modal open={!!booking} onClose={onClose} maxWidth={480}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:22 }}>
+    <Modal open={!!booking} onClose={() => { setTab("details"); onClose(); }} maxWidth={480}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:18 }}>
         <div>
           <div style={{ fontSize:20, fontWeight:800, color:t.textPrimary, letterSpacing:-0.5 }}>{booking.Name}</div>
           <div style={{ marginTop:8 }}><StatusBadge status={booking.Status} /></div>
         </div>
-        <button onClick={onClose} style={{ background:t.cardBg2, border:`1px solid ${t.border}`, borderRadius:10, width:36, height:36, cursor:"pointer", fontSize:20, display:"flex", alignItems:"center", justifyContent:"center", color:t.textSecondary }}>×</button>
+        <button onClick={() => { setTab("details"); onClose(); }} style={{ background:t.cardBg2, border:`1px solid ${t.border}`, borderRadius:10, width:36, height:36, cursor:"pointer", fontSize:20, display:"flex", alignItems:"center", justifyContent:"center", color:t.textSecondary }}>×</button>
       </div>
-      <div style={{ display:"grid", gap:8, marginBottom:18 }}>
-        {row("📞","Phone",formatPhone(booking.Phone))}
-        {row("📧","Email",booking.Email)}
-        {row("📅","Date",formatDate(booking.Date))}
-        {row("🕐","Time",booking.Time)}
-        {row("🔧","Service",booking.Service)}
-        {booking.Notes && (
-          <div style={{ padding:"11px 14px", background:t.name==="dark"?"rgba(234,179,8,0.08)":"#fffbf0", borderRadius:12, border:`1px solid ${t.name==="dark"?"rgba(234,179,8,0.2)":"#fde9a0"}`, fontSize:13, color:t.textSecondary }}>
-            📝 {booking.Notes}
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+        {tabBtn("details", "Details")}
+        {tabBtn("history", "History")}
+      </div>
+
+      {tab === "details" ? (
+        <>
+          <div style={{ display:"grid", gap:8, marginBottom:18 }}>
+            {row("📞","Phone",formatPhone(booking.Phone))}
+            {row("📧","Email",booking.Email)}
+            {row("📅","Date",formatDate(booking.Date))}
+            {row("🕐","Time",booking.Time)}
+            {row("🔧","Service",booking.Service)}
+            {booking.Notes && (
+              <div style={{ padding:"11px 14px", background:t.name==="dark"?"rgba(234,179,8,0.08)":"#fffbf0", borderRadius:12, border:`1px solid ${t.name==="dark"?"rgba(234,179,8,0.2)":"#fde9a0"}`, fontSize:13, color:t.textSecondary }}>
+                📝 {booking.Notes}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-      <a href={whatsappLink(booking.Phone)} target="_blank" rel="noreferrer"
-        style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"12px", borderRadius:12, background:t.name==="dark"?"rgba(34,197,94,0.1)":"#dcfce7", color:"#22c55e", fontWeight:700, fontSize:14, textDecoration:"none", marginBottom:14, border:`1px solid ${t.name==="dark"?"rgba(34,197,94,0.2)":"#bbf7d0"}` }}>
-        💬 WhatsApp {booking.Name}
-      </a>
-      {booking.Status==="Pending" && (
-        <div style={{ display:"flex", gap:12 }}>
-          <button onClick={()=>{onConfirm(booking["Booking ID"],booking.Name);onClose();}} style={{ flex:1,padding:"13px",borderRadius:13,border:"none",background:"linear-gradient(135deg,#22c55e,#16a34a)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 6px 20px rgba(34,197,94,.3)" }}>✓ Confirm</button>
-          <button onClick={()=>{onReject(booking["Booking ID"],booking.Name);onClose();}}  style={{ flex:1,padding:"13px",borderRadius:13,border:"none",background:"linear-gradient(135deg,#ef4444,#dc2626)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 6px 20px rgba(239,68,68,.3)" }}>✕ Reject</button>
+          <a href={whatsappLink(booking.Phone)} target="_blank" rel="noreferrer"
+            style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"12px", borderRadius:12, background:t.name==="dark"?"rgba(34,197,94,0.1)":"#dcfce7", color:"#22c55e", fontWeight:700, fontSize:14, textDecoration:"none", marginBottom:14, border:`1px solid ${t.name==="dark"?"rgba(34,197,94,0.2)":"#bbf7d0"}` }}>
+            💬 WhatsApp {booking.Name}
+          </a>
+          {booking.Status==="Pending" && (
+            <div style={{ display:"flex", gap:12 }}>
+              <button onClick={()=>{onConfirm(booking["Booking ID"],booking.Name);onClose();}} style={{ flex:1,padding:"13px",borderRadius:13,border:"none",background:"linear-gradient(135deg,#22c55e,#16a34a)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 6px 20px rgba(34,197,94,.3)" }}>✓ Confirm</button>
+              <button onClick={()=>{onReject(booking["Booking ID"],booking.Name);onClose();}}  style={{ flex:1,padding:"13px",borderRadius:13,border:"none",background:"linear-gradient(135deg,#ef4444,#dc2626)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 6px 20px rgba(239,68,68,.3)" }}>✕ Reject</button>
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ background: t.cardBg2, borderRadius: 14, border: `1px solid ${t.border}`, padding: 14 }}>
+          <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 12 }}>
+            Conversation · read-only
+          </div>
+          <ConversationHistory bookingId={booking["Booking ID"]} />
         </div>
       )}
     </Modal>
