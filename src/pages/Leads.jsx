@@ -16,7 +16,12 @@ export default function Leads() {
 
   const TH = { padding:"10px 12px", fontSize:11, fontWeight:700, color:t.thColor, textTransform:"uppercase", letterSpacing:0.8, textAlign:"left", background:t.thBg, borderBottom:`1px solid ${t.borderSub}` };
   const TD = { padding:"12px 12px", fontSize:13, color:t.tdColor, borderBottom:`1px solid ${t.borderSub}` };
-  const filtered = leads.filter(l=>l.Name?.toLowerCase().includes(search.toLowerCase())||l.Phone?.includes(search)||l["Service Interest"]?.toLowerCase().includes(search.toLowerCase()));
+  const filtered = leads.filter(l=>
+    l.Name?.toLowerCase().includes(search.toLowerCase()) ||
+    l.Phone?.includes(search) ||
+    l.Device?.toLowerCase().includes(search.toLowerCase()) ||
+    l.Issue?.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div style={{ padding:"20px 16px", maxWidth:1400, animation:"fadeIn .3s ease" }}>
@@ -47,16 +52,16 @@ export default function Leads() {
         <div style={{ background:t.cardBg, borderRadius:18, border:`1px solid ${t.border}`, boxShadow:t.cardShadow, overflow:"hidden" }}>
           <div style={{ overflowX:"auto" }}>
             <table className="leads-table" style={{ width:"100%", borderCollapse:"collapse", minWidth:320 }}>
-              <thead><tr>{["Name","Phone","Service Interest","Date","Time Ago","Notes"].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
+              <thead><tr>{["Name","Phone","Device","Issue","Date","Time Ago"].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
               <tbody>
                 {filtered.map((l,i)=>(
                   <tr key={i} style={{transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=t.rowHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                     <td style={{...TD,fontWeight:600}}>{l.Name}</td>
                     <td style={TD}><a href={whatsappLink(l.Phone)} target="_blank" rel="noreferrer" style={{color:"#22c55e",fontWeight:600,textDecoration:"none"}}>{formatPhone(l.Phone)} 💬</a></td>
-                    <td style={TD}>{l["Service Interest"]}</td>
-                    <td style={TD}>{formatDate(l.Date)}</td>
-                    <td style={{...TD,color:t.textMuted,fontSize:12}}>{timeAgo(l.Date)}</td>
-                    <td style={{...TD,color:t.textMuted}}>{l.Notes||"—"}</td>
+                    <td style={TD}>{l.Device||"—"}</td>
+                    <td style={{...TD,color:t.textMuted}}>{l.Issue||"—"}</td>
+                    <td style={TD}>{formatDate(l.created_at)}</td>
+                    <td style={{...TD,color:t.textMuted,fontSize:12}}>{timeAgo(l.created_at)}</td>
                   </tr>
                 ))}
               </tbody>

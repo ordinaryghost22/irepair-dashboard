@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ToastProvider }    from "./context/ToastContext";
 import { ThemeProvider }    from "./context/ThemeContext";
 import { SecurityProvider } from "./context/SecurityContext";
@@ -26,6 +26,12 @@ function PrivateRoute({ children }) {
 function AppInit({ children }) {
   useInit();
   return children;
+}
+
+function OwnerBotGate() {
+  const { pathname } = useLocation();
+  if (pathname === "/login" || pathname === "/book") return null;
+  return <OwnerBot />;
 }
 
 export default function App() {
@@ -59,9 +65,9 @@ export default function App() {
                 </PrivateRoute>
               } />
             </Routes>
+            <OwnerBotGate />
           </SecurityProvider>
         </BrowserRouter>
-        <OwnerBot />
       </ToastProvider>
     </ThemeProvider>
   );

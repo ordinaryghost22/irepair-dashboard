@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../store/useStore";
-import { useTheme } from "../context/ThemeContext";
+import { useTheme, primaryBtnStyle, secondaryBtnStyle } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
 import Skeleton from "../components/Skeleton";
 import Modal from "../components/Modal";
@@ -11,8 +11,6 @@ import CustomerHistory from "../components/CustomerHistory";
 import ConversationHistory from "../components/ConversationHistory";
 import { exportToCSV } from "../utils/export";
 import { formatDate, formatPhone, whatsappLink } from "../utils/format";
-import { useMobile } from "../hooks/useMobile";
-import HourglassLoader from "../components/HourglassLoader";
 import BookingManager from "../components/BookingManager";
 import { PaymentStatCards, PaymentStatusCycler } from "../components/PaymentStatus";
 import { usePaymentStatus } from "../hooks/usePaymentStatus";
@@ -50,18 +48,18 @@ function BookingModal({ booking, onClose, onConfirm, onReject, onCompleted }) {
     <button
       key={id}
       type="button"
+      className="ui-interactive"
       onClick={() => setTab(id)}
       style={{
         flex: 1,
         padding: "9px 12px",
         borderRadius: 10,
         fontSize: 12,
-        fontWeight: 700,
+        fontWeight: 600,
         cursor: "pointer",
-        border: tab === id ? "1px solid transparent" : `1px solid ${t.border}`,
-        background: tab === id ? "linear-gradient(135deg,#667eea,#764ba2)" : t.cardBg,
-        color: tab === id ? "#fff" : t.textSecondary,
-        boxShadow: tab === id ? "0 4px 16px rgba(102,126,234,.3)" : "none",
+        border: `1px solid ${tab === id ? t.borderHover : t.border}`,
+        background: tab === id ? "rgba(255,255,255,0.06)" : "transparent",
+        color: tab === id ? t.textPrimary : t.textSecondary,
       }}
     >
       {label}
@@ -120,45 +118,46 @@ function BookingModal({ booking, onClose, onConfirm, onReject, onCompleted }) {
             {row("📅","Date",formatDate(booking.Date))}
             {row("🕐","Time",booking.Time)}
             {row("🔧","Service",booking.Service)}
+            {row("📣","Source",booking.Source)}
             {row("💰","Amount",amountDisplay)}
             {booking.Notes && (
-              <div style={{ padding:"11px 14px", background:t.name==="dark"?"rgba(234,179,8,0.08)":"#fffbf0", borderRadius:12, border:`1px solid ${t.name==="dark"?"rgba(234,179,8,0.2)":"#fde9a0"}`, fontSize:13, color:t.textSecondary }}>
-                📝 {booking.Notes}
+              <div style={{ padding:"11px 14px", background:"rgba(255,255,255,0.04)", borderRadius:10, border:`1px solid ${t.border}`, fontSize:13, color:t.textSecondary }}>
+                {booking.Notes}
               </div>
             )}
           </div>
           <a href={whatsappLink(booking.Phone)} target="_blank" rel="noreferrer"
-            style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"12px", borderRadius:12, background:t.name==="dark"?"rgba(34,197,94,0.1)":"#dcfce7", color:"#22c55e", fontWeight:700, fontSize:14, textDecoration:"none", marginBottom:14, border:`1px solid ${t.name==="dark"?"rgba(34,197,94,0.2)":"#bbf7d0"}` }}>
-            💬 WhatsApp {booking.Name}
+            className="ui-interactive"
+            style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"12px", borderRadius:10, background:"transparent", color:t.textSecondary, fontWeight:600, fontSize:14, textDecoration:"none", marginBottom:14, border:`1px solid rgba(255,255,255,0.12)` }}>
+            WhatsApp {booking.Name}
           </a>
           {booking.Status==="Pending" && (
             <div style={{ display:"flex", gap:12, marginBottom: canComplete ? 12 : 0 }}>
-              <button onClick={()=>{onConfirm(booking["Booking ID"],booking.Name);onClose();}} style={{ flex:1,padding:"13px",borderRadius:13,border:"none",background:"linear-gradient(135deg,#22c55e,#16a34a)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 6px 20px rgba(34,197,94,.3)" }}>✓ Confirm</button>
-              <button onClick={()=>{onReject(booking["Booking ID"],booking.Name);onClose();}}  style={{ flex:1,padding:"13px",borderRadius:13,border:"none",background:"linear-gradient(135deg,#ef4444,#dc2626)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 6px 20px rgba(239,68,68,.3)" }}>✕ Reject</button>
+              <button className="ui-interactive" onClick={()=>{onConfirm(booking["Booking ID"],booking.Name);onClose();}} style={{ ...primaryBtnStyle(t), flex:1, padding:"13px", fontSize:14 }}>Confirm</button>
+              <button className="ui-interactive" onClick={()=>{onReject(booking["Booking ID"],booking.Name);onClose();}}  style={{ ...secondaryBtnStyle(t), flex:1, padding:"13px", fontSize:14 }}>Reject</button>
             </div>
           )}
           {canComplete && (
             <button
+              className="ui-interactive"
               onClick={() => {
                 setInvoiceAmount(booking.amount != null && booking.amount !== "" ? String(booking.amount) : "");
                 setCompleteOpen(true);
               }}
               style={{
-                width: "100%", padding: "13px", borderRadius: 13, border: "none",
-                background: "linear-gradient(135deg,#6366f1,#4f46e5)", color: "#fff",
-                fontWeight: 700, fontSize: 14, cursor: "pointer",
-                boxShadow: "0 6px 20px rgba(99,102,241,.3)",
+                ...primaryBtnStyle(t),
+                width: "100%", padding: "13px", fontSize: 14,
               }}
             >
-              ✓ Mark Completed
+              Mark Completed
             </button>
           )}
           {booking.Status === "Completed" && (
             <div style={{
-              padding: "12px 14px", borderRadius: 12, fontSize: 13, fontWeight: 600, textAlign: "center",
-              background: t.name === "dark" ? "rgba(99,102,241,0.12)" : "#eef2ff",
-              color: t.name === "dark" ? "#a5b4fc" : "#4338ca",
-              border: `1px solid ${t.name === "dark" ? "rgba(99,102,241,0.25)" : "#c7d2fe"}`,
+              padding: "12px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600, textAlign: "center",
+              background: "rgba(255,255,255,0.06)",
+              color: t.textSecondary,
+              border: `1px solid ${t.border}`,
             }}>
               Completed — invoice generated
             </div>
@@ -201,24 +200,21 @@ function BookingModal({ booking, onClose, onConfirm, onReject, onCompleted }) {
       />
       <div style={{ display: "flex", gap: 10 }}>
         <button
+          className="ui-interactive"
           disabled={submitting}
           onClick={() => setCompleteOpen(false)}
-          style={{
-            flex: 1, padding: "12px", borderRadius: 12, cursor: "pointer", fontWeight: 600, fontSize: 13,
-            background: t.cardBg2, border: `1px solid ${t.border}`, color: t.textSecondary,
-          }}
+          style={{ ...secondaryBtnStyle(t), flex: 1, padding: "12px", fontSize: 13 }}
         >
           Cancel
         </button>
         <button
+          className="ui-interactive"
           disabled={submitting}
           onClick={handleGenerateInvoice}
           style={{
-            flex: 1, padding: "12px", borderRadius: 12, border: "none", cursor: "pointer",
-            fontWeight: 700, fontSize: 13, color: "#fff",
-            background: "linear-gradient(135deg,#6366f1,#4f46e5)",
+            ...primaryBtnStyle(t),
+            flex: 1, padding: "12px", fontSize: 13,
             opacity: submitting ? 0.7 : 1,
-            boxShadow: "0 6px 20px rgba(99,102,241,.3)",
           }}
         >
           {submitting ? "Creating…" : "Confirm & Invoice"}
@@ -237,7 +233,6 @@ export default function Bookings() {
   const fetchAll        = useStore(s => s.fetchAll);
   const { theme:t }     = useTheme();
   const { showToast }   = useToast();
-  const isMobile = useMobile();
   const { changeStatus, loadingId } = usePaymentStatus();
 const deleteBooking = useStore(s => s.deleteBooking);
 const updateBookingStatus = useStore(s => s.updateBookingStatus);
@@ -261,10 +256,10 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
     setTimeout(() => fetchAll(true, showToast), 1500);
   }
 
-  if (loading) return <HourglassLoader />;
+  if (loading) return <Skeleton rows={8} />;
 
-  const TH = { padding:"10px 12px", fontSize:11, fontWeight:700, color:t.thColor, textTransform:"uppercase", letterSpacing:0.8, textAlign:"left", background:t.thBg, borderBottom:`1px solid ${t.borderSub}` };
-  const TD = { padding:"12px 12px", fontSize:13, color:t.tdColor, borderBottom:`1px solid ${t.borderSub}` };
+  const TH = { padding:"10px 12px", fontSize:11, fontWeight:600, color:t.thColor, textTransform:"uppercase", letterSpacing:0.8, textAlign:"left", background:"transparent", borderBottom:`1px solid ${t.border}` };
+  const TD = { padding:"12px 12px", fontSize:13, color:t.tdColor };
 
   const filtered = bookings.filter(b => {
     const s = search.toLowerCase();
@@ -275,16 +270,16 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
   const rejectBooking  = (id, name) => storeReject(id, name, showToast);
 
   return (
-    <div style={{ padding:"20px 16px", maxWidth:1400, animation:"fadeIn .3s ease" }}>
+    <div style={{ padding:"20px 16px", maxWidth:1400 }}>
       <style>{`
-        @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         @media(max-width:768px){
           .bk-header{flex-direction:column!important;gap:10px!important;align-items:flex-start!important}
           .bk-filterrow{flex-direction:column!important;gap:8px!important}
           .bk-filters{flex-wrap:wrap!important;gap:6px!important}
           .bk-table th:nth-child(1),.bk-table td:nth-child(1),
           .bk-table th:nth-child(4),.bk-table td:nth-child(4),
-          .bk-table th:nth-child(6),.bk-table td:nth-child(6){display:none}
+          .bk-table th:nth-child(5),.bk-table td:nth-child(5),
+          .bk-table th:nth-child(7),.bk-table td:nth-child(7){display:none}
         }
       `}</style>
 
@@ -302,7 +297,7 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
           <h1 style={{ fontSize:22, fontWeight:800, color:t.textPrimary, letterSpacing:-0.6, margin:0 }}>Bookings</h1>
           <p style={{ color:t.textSecondary, fontSize:13, marginTop:5 }}>{bookings.length} total · {bookings.filter(b=>b.Status==="Pending").length} pending</p>
         </div>
-        <button onClick={()=>exportToCSV(filtered,"bookings.csv")} style={{ padding:"9px 16px", borderRadius:12, border:`1px solid ${t.border}`, background:t.cardBg, color:t.textSecondary, fontWeight:600, fontSize:13, cursor:"pointer", whiteSpace:"nowrap" }}>⬇ Export</button>
+        <button className="ui-interactive" onClick={()=>exportToCSV(filtered,"bookings.csv")} style={{ ...secondaryBtnStyle(t), padding:"9px 16px", fontSize:13, whiteSpace:"nowrap" }}>Export</button>
       </div>
 
       {/* Payment stat cards */}
@@ -319,31 +314,32 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
         </div>
         <div className="bk-filters" style={{ display:"flex", gap:6 }}>
           {["All","Pending","Confirmed","Completed","Rejected"].map(s=>(
-            <button key={s} onClick={()=>setFilter(s)} style={{ padding:"9px 14px", borderRadius:10, fontSize:12, fontWeight:600, cursor:"pointer", transition:"all .15s", whiteSpace:"nowrap",
-              background:filter===s?"linear-gradient(135deg,#667eea,#764ba2)":t.cardBg,
-              color:filter===s?"#fff":t.textSecondary, border:filter===s?"1px solid transparent":`1px solid ${t.border}`,
-              boxShadow:filter===s?"0 4px 16px rgba(102,126,234,.3)":"none"
+            <button key={s} className="ui-interactive" onClick={()=>setFilter(s)} style={{ padding:"9px 14px", borderRadius:10, fontSize:12, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap",
+              background:filter===s?"rgba(255,255,255,0.06)":"transparent",
+              color:filter===s?t.textPrimary:t.textSecondary,
+              border:`1px solid ${filter===s?t.borderHover:t.border}`,
             }}>{s}</button>
           ))}
         </div>
       </div>
 
       {filtered.length===0 ? <EmptyState icon="📋" title="No bookings found" subtitle="Try a different search or filter" /> : (
-        <div style={{ background:t.cardBg, borderRadius:18, border:`1px solid ${t.border}`, boxShadow:t.cardShadow, overflow:"hidden" }}>
+        <div style={{ background:t.cardBg, borderRadius:16, border:`1px solid ${t.border}`, borderTop:`1px solid ${t.borderTopHighlight}`, boxShadow:t.cardShadow, overflow:"hidden" }}>
           <div style={{ overflowX:"auto" }}>
-            <table className="bk-table" style={{ width:"100%", borderCollapse:"collapse", minWidth:400 }}>
-              <thead><tr>{["ID","Name","Phone","Service","Date","Time","Status","Payment","Actions"].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
-              <tbody>
+            <table className="bk-table data-table" style={{ width:"100%", minWidth:400 }}>
+              <thead><tr>{["ID","Name","Phone","Service","Source","Date","Time","Status","Payment","Actions"].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
+              <tbody className="list-stagger-rows">
                 {filtered.map((b,i)=>(
-                  <tr key={i} style={{ cursor:"pointer", transition:"background .12s" }}
+                  <tr key={i} style={{ cursor:"pointer" }}
                     onClick={()=>setSelected(b)}
-                    onMouseEnter={e=>e.currentTarget.style.background=t.rowHover}
-                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}
                   >
                     <td style={{...TD,fontFamily:"monospace",fontSize:11,color:t.textMuted}}>{b["Booking ID"]||"—"}</td>
-                    <td style={{...TD,fontWeight:600,color:t.accent,cursor:"pointer"}} onClick={e=>{e.stopPropagation();setCustomer(b);}}>{b.Name}</td>
+                    <td style={{...TD,fontWeight:600,color:t.textPrimary,cursor:"pointer"}} onClick={e=>{e.stopPropagation();setCustomer(b);}}>{b.Name}</td>
                     <td style={TD}>{formatPhone(b.Phone?.toString()||"")}</td>
                     <td style={TD}>{b.Service}</td>
+                    <td style={TD}>
+                      {b.Source ? <StatusBadge status={b.Source} /> : <span style={{ color: t.textMuted }}>—</span>}
+                    </td>
                     <td style={TD}>{formatDate(b.Date)}</td>
                     <td style={TD}>{b.Time}</td>
                   <td style={TD} onClick={e => e.stopPropagation()}>
@@ -369,14 +365,14 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
                       />
                     </td>
                    <td style={TD} onClick={e => e.stopPropagation()}>
-  <div style={{ display: "flex", gap: 6 }}>
+  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
     {b.Status === "Pending" && (
       <>
-        <button onClick={() => confirmBooking(b["Booking ID"], b.Name)} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: t.name === "dark" ? "rgba(34,197,94,0.15)" : "#dcfce7", color: "#22c55e", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>✓</button>
-        <button onClick={() => rejectBooking(b["Booking ID"], b.Name)} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: t.name === "dark" ? "rgba(239,68,68,0.15)" : "#fee2e2", color: "#ef4444", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>✕</button>
+        <button className="btn-ghost-ok" onClick={() => confirmBooking(b["Booking ID"], b.Name)} title="Confirm">✓</button>
+        <button className="btn-ghost-danger" onClick={() => rejectBooking(b["Booking ID"], b.Name)} title="Reject">✕</button>
       </>
     )}
-    <button onClick={() => handleDeleteBooking(b["Booking ID"])} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: t.name === "dark" ? "rgba(239,68,68,0.15)" : "#fee2e2", color: "#ef4444", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🗑</button>
+    <button className="btn-ghost-danger" onClick={() => handleDeleteBooking(b["Booking ID"])} title="Delete">🗑</button>
   </div>
 </td>
                   </tr>

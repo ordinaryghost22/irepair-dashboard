@@ -1,14 +1,89 @@
 export const BASE_URL = "http://localhost:5678/webhook";
 
+/**
+ * Status badges — exact glow values from premium pass.
+ */
 export const STATUS_COLORS = {
-  Confirmed: { bg:"#dcfce7", color:"#15803d", dot:"#22c55e",  darkBg:"rgba(34,197,94,0.15)",  darkColor:"#4ade80" },
-  Pending:   { bg:"#fef9c3", color:"#a16207", dot:"#eab308",  darkBg:"rgba(234,179,8,0.15)",   darkColor:"#facc15" },
-  Rejected:  { bg:"#fee2e2", color:"#b91c1c", dot:"#ef4444",  darkBg:"rgba(239,68,68,0.15)",   darkColor:"#f87171" },
-  Completed: { bg:"#e0e7ff", color:"#3730a3", dot:"#6366f1",  darkBg:"rgba(99,102,241,0.18)", darkColor:"#a5b4fc" },
-  Cancelled: { bg:"#f3f4f6", color:"#6b7280", dot:"#9ca3af",  darkBg:"rgba(156,163,175,0.15)", darkColor:"#d1d5db" },
-  Available: { bg:"#dcfce7", color:"#15803d", dot:"#22c55e",  darkBg:"rgba(34,197,94,0.15)",  darkColor:"#4ade80" },
-  Booked:    { bg:"#fee2e2", color:"#b91c1c", dot:"#ef4444",  darkBg:"rgba(239,68,68,0.15)",   darkColor:"#f87171" },
-  default:   { bg:"#f3f4f6", color:"#6b7280", dot:"#9ca3af",  darkBg:"rgba(156,163,175,0.15)", darkColor:"#d1d5db" },
+  Pending: {
+    bg: "rgba(234,179,8,0.15)",
+    color: "#fbbf24",
+    border: "rgba(234,179,8,0.3)",
+    dot: "#fbbf24",
+    shadow: "0 0 20px rgba(234,179,8,0.2)",
+  },
+  Confirmed: {
+    bg: "rgba(34,197,94,0.15)",
+    color: "#4ade80",
+    border: "rgba(34,197,94,0.3)",
+    dot: "#4ade80",
+    shadow: "0 0 20px rgba(34,197,94,0.2)",
+  },
+  Rejected: {
+    bg: "rgba(248,113,113,0.15)",
+    color: "#f87171",
+    border: "rgba(248,113,113,0.3)",
+    dot: "#f87171",
+    shadow: "0 0 20px rgba(248,113,113,0.2)",
+  },
+  Completed: {
+    bg: "rgba(255,255,255,0.06)",
+    color: "rgba(255,255,255,0.6)",
+    border: "rgba(255,255,255,0.12)",
+    dot: "rgba(255,255,255,0.4)",
+    shadow: "none",
+  },
+  Cancelled: {
+    bg: "rgba(255,255,255,0.05)",
+    color: "rgba(255,255,255,0.40)",
+    border: "rgba(255,255,255,0.10)",
+    dot: "rgba(255,255,255,0.28)",
+    shadow: "none",
+  },
+  Available: {
+    bg: "rgba(34,197,94,0.15)",
+    color: "#4ade80",
+    border: "rgba(34,197,94,0.3)",
+    dot: "#4ade80",
+    shadow: "0 0 20px rgba(34,197,94,0.2)",
+  },
+  Booked: {
+    bg: "rgba(248,113,113,0.15)",
+    color: "#f87171",
+    border: "rgba(248,113,113,0.3)",
+    dot: "#f87171",
+    shadow: "0 0 20px rgba(248,113,113,0.2)",
+  },
+  default: {
+    bg: "rgba(255,255,255,0.06)",
+    color: "rgba(255,255,255,0.6)",
+    border: "rgba(255,255,255,0.12)",
+    dot: "rgba(255,255,255,0.4)",
+    shadow: "none",
+  },
+};
+
+export const PAYMENT_COLORS = {
+  Paid: {
+    bg: "rgba(34,197,94,0.15)",
+    color: "#4ade80",
+    border: "rgba(34,197,94,0.3)",
+    dot: "#4ade80",
+    shadow: "0 0 20px rgba(34,197,94,0.2)",
+  },
+  Unpaid: {
+    bg: "rgba(245,158,11,0.15)",
+    color: "#fbbf24",
+    border: "rgba(245,158,11,0.3)",
+    dot: "#fbbf24",
+    shadow: "0 0 20px rgba(245,158,11,0.2)",
+  },
+  Onsite: {
+    bg: "rgba(255,255,255,0.06)",
+    color: "rgba(255,255,255,0.6)",
+    border: "rgba(255,255,255,0.12)",
+    dot: "rgba(255,255,255,0.4)",
+    shadow: "none",
+  },
 };
 
 export const SERVICE_PRICES = {
@@ -21,17 +96,17 @@ export const SERVICE_PRICES = {
 };
 
 export const NAV_ITEMS = [
-  { path:"/",          label:"Dashboard",  icon:"◈" },
-  { path:"/bookings",  label:"Bookings",   icon:"📋", badge:true },
-  { path:"/invoices",  label:"Invoices",   icon:"🧾" },
-  { path:"/slots",     label:"Slots",      icon:"🕐" },
-  { path:"/leads",     label:"Leads",      icon:"👥" },
-  { path:"/waitlist",  label:"Waitlist",   icon:"⏳" },
-  { path:"/chats",     label:"Chats",      icon:"💬" },
-  { path:"/analytics", label:"Analytics",  icon:"📊" },
-  { path:"/audit",     label:"Audit Log",  icon:"📜" },
-  { path:"/security",  label:"Security",   icon:"🛡️" },
-  { path:"/settings",  label:"Settings",   icon:"⚙️" },
+  { path:"/",          label:"Dashboard",  badge:false },
+  { path:"/bookings",  label:"Bookings",   badge:true },
+  { path:"/invoices",  label:"Invoices" },
+  { path:"/slots",     label:"Slots" },
+  { path:"/leads",     label:"Leads" },
+  { path:"/waitlist",  label:"Waitlist" },
+  { path:"/chats",     label:"Chats" },
+  { path:"/analytics", label:"Analytics" },
+  { path:"/audit",     label:"Audit Log" },
+  { path:"/security",  label:"Security" },
+  { path:"/settings",  label:"Settings" },
 ];
 
 export const DATE_RANGES = ["Today", "This Week", "This Month", "All Time"];

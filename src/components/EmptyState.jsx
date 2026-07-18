@@ -1,13 +1,50 @@
-import { useTheme } from "../context/ThemeContext";
-export default function EmptyState({ icon="📭", title, subtitle, action, onAction }) {
-  const { theme:t } = useTheme();
+import { useTheme, secondaryBtnStyle, cardStyle } from "../context/ThemeContext";
+
+export default function EmptyState({ icon = "◈", title, subtitle, action, onAction }) {
+  const { theme: t } = useTheme();
   return (
-    <div style={{ background:t.cardBg, borderRadius:18, border:`1px solid ${t.border}`, padding:"72px 24px", textAlign:"center", boxShadow:t.cardShadow }}>
-      <div style={{ fontSize:52, marginBottom:16, lineHeight:1 }}>{icon}</div>
-      <div style={{ color:t.textPrimary, fontWeight:700, fontSize:16, marginBottom:6 }}>{title}</div>
-      {subtitle && <div style={{ color:t.textMuted, fontSize:13, marginBottom:action?20:0 }}>{subtitle}</div>}
+    <div
+      style={{
+        ...cardStyle(t),
+        padding: "56px 24px",
+        textAlign: "center",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 22,
+          marginBottom: 12,
+          color: t.textMuted,
+          lineHeight: 1,
+          opacity: 0.85,
+        }}
+      >
+        {icon}
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 600, color: t.textSecondary, marginBottom: subtitle ? 6 : 0 }}>
+        {title}
+      </div>
+      {subtitle && (
+        <div style={{ fontSize: 12, color: t.textMuted, marginBottom: action ? 18 : 0, lineHeight: 1.5 }}>
+          {subtitle}
+        </div>
+      )}
       {action && onAction && (
-        <button onClick={onAction} style={{ padding:"10px 24px", borderRadius:12, border:"none", background:"linear-gradient(135deg,#667eea,#764ba2)", color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer", boxShadow:"0 4px 16px rgba(102,126,234,.3)" }}>{action}</button>
+        <button
+          className="ui-interactive"
+          onClick={onAction}
+          style={{ ...secondaryBtnStyle(t), padding: "8px 18px", fontSize: 12 }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = t.borderHover;
+            e.currentTarget.style.color = t.textPrimary;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)";
+            e.currentTarget.style.color = t.textSecondary;
+          }}
+        >
+          {action}
+        </button>
       )}
     </div>
   );

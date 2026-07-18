@@ -6,7 +6,6 @@ import { getBookingHistory } from "../api";
  * Read-only chatbot conversation bubbles.
  * - Pass `messages` to render a history array directly (Chats page).
  * - Pass `bookingId` to fetch via GET /bookings/{id}/history (booking History tab).
- * If both are provided, `messages` wins and no fetch runs.
  */
 export default function ConversationHistory({ bookingId, messages: messagesProp }) {
   const { theme: t } = useTheme();
@@ -43,7 +42,9 @@ export default function ConversationHistory({ bookingId, messages: messagesProp 
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [bookingId, useDirect, messagesProp]);
 
   if (loading) {
@@ -56,7 +57,7 @@ export default function ConversationHistory({ bookingId, messages: messagesProp 
 
   if (error) {
     return (
-      <div style={{ textAlign: "center", padding: "36px 0", color: "#ef4444", fontSize: 13 }}>
+      <div style={{ textAlign: "center", padding: "36px 0", color: t.textSecondary, fontSize: 13 }}>
         {error}
       </div>
     );
@@ -65,7 +66,9 @@ export default function ConversationHistory({ bookingId, messages: messagesProp 
   if (messages.length === 0) {
     return (
       <div style={{ textAlign: "center", padding: "36px 0", color: t.textMuted, fontSize: 13 }}>
-        {useDirect ? "No messages in this conversation." : (
+        {useDirect ? (
+          "No messages in this conversation."
+        ) : (
           <>
             No chat history for this booking.
             <div style={{ marginTop: 6, fontSize: 12 }}>
@@ -78,7 +81,10 @@ export default function ConversationHistory({ bookingId, messages: messagesProp 
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "50vh", overflowY: "auto", paddingRight: 4 }}>
+    <div
+      className="list-stagger"
+      style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "50vh", overflowY: "auto", paddingRight: 4 }}
+    >
       {messages.map((m, i) => {
         const isCustomer = m.role === "user";
         const isBot = m.role === "assistant";
@@ -87,9 +93,9 @@ export default function ConversationHistory({ bookingId, messages: messagesProp 
           <div key={i} style={{ display: "flex", justifyContent: isCustomer ? "flex-start" : "flex-end" }}>
             <div
               style={{
-                background: isCustomer ? t.cardBg2 : "linear-gradient(135deg,#667eea,#764ba2)",
-                border: isCustomer ? `1px solid ${t.border}` : "none",
-                borderRadius: isCustomer ? "18px 18px 18px 4px" : "18px 18px 4px 18px",
+                background: isCustomer ? "rgba(255,255,255,0.04)" : t.cardBg,
+                border: `1px solid ${t.border}`,
+                borderRadius: isCustomer ? "14px 14px 14px 4px" : "14px 14px 4px 14px",
                 padding: "12px 14px",
                 maxWidth: "85%",
               }}
@@ -97,8 +103,8 @@ export default function ConversationHistory({ bookingId, messages: messagesProp 
               <div
                 style={{
                   fontSize: 11,
-                  color: isCustomer ? t.textMuted : "rgba(255,255,255,.55)",
-                  fontWeight: 700,
+                  color: t.textMuted,
+                  fontWeight: 600,
                   textTransform: "uppercase",
                   letterSpacing: 0.7,
                   marginBottom: 5,
@@ -109,7 +115,7 @@ export default function ConversationHistory({ bookingId, messages: messagesProp 
               <div
                 style={{
                   fontSize: 14,
-                  color: isCustomer ? t.textPrimary : "#fff",
+                  color: t.textPrimary,
                   lineHeight: 1.5,
                   whiteSpace: "pre-wrap",
                 }}

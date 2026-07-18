@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "./ThemeContext";
 
@@ -131,25 +132,57 @@ export function SecurityProvider({ children }) {
       {children}
 
       {/* ── SESSION TIMEOUT WARNING MODAL ── */}
-      {showWarning && (
-        <div style={{ position:"fixed", inset:0, zIndex:9999, background:"rgba(0,0,0,0.7)", backdropFilter:"blur(8px)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <div style={{ background:t.cardBg, borderRadius:24, padding:36, maxWidth:400, width:"90%", textAlign:"center", border:`1px solid ${t.border}`, boxShadow:"0 32px 80px rgba(0,0,0,0.5)", animation:"popIn .2s ease" }}>
-            <div style={{ fontSize:48, marginBottom:16 }}>⏱️</div>
-            <h2 style={{ color:t.textPrimary, fontWeight:800, fontSize:20, marginBottom:8 }}>Session Expiring</h2>
+      {showWarning && createPortal(
+        <div
+          className="modal-backdrop"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            inset: 0,
+            zIndex: 9999,
+            background: "rgba(0,0,0,0.65)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            className="modal-surface"
+            style={{
+              background: t.cardBg,
+              borderRadius: 14,
+              padding: 36,
+              maxWidth: 400,
+              width: "90%",
+              textAlign: "center",
+              border: `1px solid ${t.border}`,
+              borderTop: `1px solid ${t.borderTopHighlight}`,
+              boxShadow: t.cardShadow,
+              position: "relative",
+              zIndex: 1,
+            }}
+          >
+            <div style={{ fontSize:40, marginBottom:16, opacity:0.6 }}>⏱</div>
+            <h2 style={{ color:t.textPrimary, fontWeight:700, fontSize:20, marginBottom:8 }}>Session Expiring</h2>
             <p style={{ color:t.textSecondary, fontSize:14, marginBottom:24 }}>You will be logged out in</p>
-            <div style={{ fontSize:52, fontWeight:800, color: countdown < 30 ? "#ef4444" : "#667eea", marginBottom:24, fontVariantNumeric:"tabular-nums" }}>
+            <div style={{ fontSize:52, fontWeight:700, color: countdown < 30 ? t.textPrimary : "var(--accent)", marginBottom:24, fontVariantNumeric:"tabular-nums" }}>
               {Math.floor(countdown/60)}:{String(countdown%60).padStart(2,"0")}
             </div>
             <div style={{ display:"flex", gap:12 }}>
-              <button onClick={() => { resetTimer(); }} style={{ flex:1, padding:"13px", borderRadius:13, border:"none", background:"linear-gradient(135deg,#667eea,#764ba2)", color:"#fff", fontWeight:700, fontSize:14, cursor:"pointer" }}>
+              <button className="ui-interactive" onClick={() => { resetTimer(); }} style={{ flex:1, padding:"13px", borderRadius:10, border:"none", background:t.btnPrimaryBg, color:t.btnPrimaryColor, boxShadow:t.btnPrimaryShadow, fontWeight:700, fontSize:14, cursor:"pointer" }}>
                 Stay Logged In
               </button>
-              <button onClick={() => logout("User chose to logout")} style={{ flex:1, padding:"13px", borderRadius:13, border:`1px solid ${t.border}`, background:t.cardBg2, color:t.textSecondary, fontWeight:700, fontSize:14, cursor:"pointer" }}>
+              <button className="ui-interactive" onClick={() => logout("User chose to logout")} style={{ flex:1, padding:"13px", borderRadius:10, border:`1px solid rgba(255,255,255,0.12)`, background:"transparent", color:t.textSecondary, fontWeight:600, fontSize:14, cursor:"pointer" }}>
                 Logout
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </SecurityContext.Provider>
   );

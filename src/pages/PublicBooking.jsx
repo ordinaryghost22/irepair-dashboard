@@ -307,6 +307,7 @@ export default function PublicBooking() {
       status: "Pending",
       payment_status: "Unpaid",
       notes: form.notes || null,
+      ...(form.heardFrom ? { source: form.heardFrom } : {}),
       ...(calculatedAmount != null ? { amount: calculatedAmount } : {}),
     };
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useStore } from "../store/useStore";
-import { useTheme } from "../context/ThemeContext";
+import { useTheme, primaryBtnStyle, secondaryBtnStyle } from "../context/ThemeContext";
 
 const WEBHOOK = import.meta.env.VITE_N8N_BOOKING_WEBHOOK;
 
@@ -116,9 +117,9 @@ export default function BookingManager() {
   });
 
   const paymentColors = {
-    Paid:   { bg: t.name === "dark" ? "rgba(34,197,94,0.15)"  : "#F0FDF4", color: "#22c55e" },
-    Unpaid: { bg: t.name === "dark" ? "rgba(239,68,68,0.15)"  : "#FEF2F2", color: "#ef4444" },
-    Onsite: { bg: t.name === "dark" ? "rgba(251,146,60,0.15)" : "#FFF7ED", color: "#fb923c" },
+    Paid:   { bg: "rgba(34,197,94,0.12)",  color: "#4ade80", border: "rgba(34,197,94,0.22)" },
+    Unpaid: { bg: "rgba(245,158,11,0.12)", color: "#fbbf24", border: "rgba(245,158,11,0.22)" },
+    Onsite: { bg: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)", border: "rgba(255,255,255,0.12)" },
   };
 
   const inputStyle = {
@@ -159,12 +160,13 @@ export default function BookingManager() {
           />
         </div>
         <button
+          className="ui-interactive"
           onClick={openAdd}
           style={{
-            padding: "8px 18px", background: t.accent, color: "#fff",
-            border: "none", borderRadius: 10, fontSize: 13,
-            cursor: "pointer", fontWeight: 700, whiteSpace: "nowrap",
-            boxShadow: `0 4px 14px ${t.accentGlow}`,
+            ...primaryBtnStyle(t),
+            padding: "8px 18px",
+            fontSize: 13,
+            whiteSpace: "nowrap",
           }}
         >
           + Add Booking
@@ -172,7 +174,7 @@ export default function BookingManager() {
       </div>
 
       {/* Table */}
-      <div style={{ background: t.cardBg, borderRadius: 16, border: `1px solid ${t.border}`, boxShadow: t.cardShadow, overflow: "hidden" }}>
+      <div style={{ background: t.cardBg, borderRadius: 16, border: `1px solid ${t.border}`, borderTop: `1px solid ${t.borderTopHighlight}`, boxShadow: t.cardShadow, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 500 }}>
             <thead>
@@ -201,7 +203,7 @@ export default function BookingManager() {
                       <td style={TD}>{b.date}</td>
                       <td style={TD}>{b.time}</td>
                       <td style={TD}>
-                        <div style={{ fontWeight: 600, color: t.accent }}>{b.name}</div>
+                        <div style={{ fontWeight: 600, color: t.textPrimary }}>{b.name}</div>
                         <div style={{ fontSize: 11, color: t.textMuted }}>{b.phone}</div>
                       </td>
                       <td style={TD}>{b.device}</td>
@@ -209,8 +211,9 @@ export default function BookingManager() {
                       <td style={TD}>
                         <span style={{
                           display: "inline-block", padding: "3px 10px",
-                          borderRadius: 999, fontSize: 11, fontWeight: 700,
+                          borderRadius: 999, fontSize: 11, fontWeight: 600,
                           background: pc.bg, color: pc.color,
+                          border: `1px solid ${pc.border}`,
                         }}>
                           {b.paymentStatus || "Unpaid"}
                         </span>
@@ -233,8 +236,8 @@ export default function BookingManager() {
                             style={{
                               padding: "5px 12px", fontSize: 12, cursor: "pointer",
                               borderRadius: 8, fontWeight: 600,
-                              background: t.name === "dark" ? "rgba(239,68,68,0.15)" : "#FEF2F2",
-                              color: "#ef4444",
+                              background: "rgba(255,255,255,0.06)",
+                              color: t.textSecondary,
                               border: t.name === "dark" ? "1px solid rgba(239,68,68,0.3)" : "1px solid #fca5a5",
                               opacity: deleting === b.id ? 0.5 : 1,
                             }}
@@ -253,20 +256,36 @@ export default function BookingManager() {
       </div>
 
       {/* Modal */}
-      {modal && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 2000,
-          background: "rgba(0,0,0,0.6)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          padding: 16,
-        }}>
-          <div style={{
-            background: t.cardBg, borderRadius: 16, padding: 24,
-            width: "100%", maxWidth: 500,
-            maxHeight: "90vh", overflowY: "auto",
-            border: `1px solid ${t.border}`,
-            boxShadow: t.cardShadow,
-          }}>
+      {modal && createPortal(
+        <div
+          className="modal-backdrop"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            inset: 0,
+            zIndex: 2000,
+            background: "rgba(0,0,0,0.65)",
+            backdropFilter: "blur(8px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            className="modal-surface"
+            style={{
+              background: t.cardBg, borderRadius: 16, padding: 24,
+              width: "100%", maxWidth: 500,
+              maxHeight: "90vh", overflowY: "auto",
+              border: `1px solid ${t.border}`,
+              borderTop: `1px solid ${t.borderTopHighlight}`,
+              boxShadow: t.cardShadow,
+              position: "relative",
+              zIndex: 1,
+            }}
+          >
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: t.textPrimary }}>
@@ -315,8 +334,8 @@ export default function BookingManager() {
             {error && (
               <div style={{
                 marginTop: 12, padding: "10px 14px",
-                background: t.name === "dark" ? "rgba(239,68,68,0.15)" : "#FEF2F2",
-                color: "#ef4444", borderRadius: 10, fontSize: 13,
+                background: "rgba(255,255,255,0.06)",
+                color: t.textSecondary, borderRadius: 10, fontSize: 13,
                 border: t.name === "dark" ? "1px solid rgba(239,68,68,0.3)" : "1px solid #fca5a5",
               }}>
                 {error}
@@ -325,25 +344,24 @@ export default function BookingManager() {
 
             {/* Actions */}
             <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}>
-              <button onClick={closeModal} style={{
-                padding: "9px 18px", border: `1px solid ${t.border}`,
-                borderRadius: 10, fontSize: 13, cursor: "pointer",
-                background: t.cardBg2, color: t.textSecondary, fontWeight: 600,
+              <button className="ui-interactive" onClick={closeModal} style={{
+                ...secondaryBtnStyle(t),
+                padding: "9px 18px", fontSize: 13,
               }}>
                 Cancel
               </button>
-              <button onClick={handleSave} disabled={saving} style={{
-                padding: "9px 22px", background: t.accent, color: "#fff",
-                border: "none", borderRadius: 10, fontSize: 13,
-                cursor: saving ? "wait" : "pointer", fontWeight: 700,
+              <button className="ui-interactive" onClick={handleSave} disabled={saving} style={{
+                ...primaryBtnStyle(t),
+                padding: "9px 22px", fontSize: 13,
                 opacity: saving ? 0.7 : 1,
-                boxShadow: `0 4px 14px ${t.accentGlow}`,
+                cursor: saving ? "wait" : "pointer",
               }}>
                 {saving ? "Saving…" : modal === "add" ? "Add booking" : "Save changes"}
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

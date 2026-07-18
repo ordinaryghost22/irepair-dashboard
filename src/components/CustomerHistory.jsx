@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useTheme } from "../context/ThemeContext";
 
 export default function CustomerHistory({ customer, bookings, onClose }) {
@@ -14,14 +15,49 @@ export default function CustomerHistory({ customer, bookings, onClose }) {
   const firstVisit = history.length ? history[history.length-1].Date : "—";
   const lastVisit  = history.length ? history[0].Date : "—";
 
-  return (
-    <div onClick={onClose} style={{ position:"fixed", inset:0, zIndex:2000, background:"rgba(0,0,0,0.7)", backdropFilter:"blur(8px)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:t.cardBg, borderRadius:24, padding:32, width:"100%", maxWidth:520, boxShadow:"0 32px 100px rgba(0,0,0,0.5)", border:`1px solid ${t.border}`, animation:"popIn .2s ease", maxHeight:"80vh", overflowY:"auto" }}>
+  return createPortal(
+    <div
+      className="modal-backdrop"
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        inset: 0,
+        zIndex: 2000,
+        background: "rgba(0,0,0,0.65)",
+        backdropFilter: "blur(8px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+      }}
+    >
+      <div
+        className="modal-surface"
+        onClick={e=>e.stopPropagation()}
+        style={{
+          background: t.cardBg,
+          borderRadius: 14,
+          padding: 32,
+          width: "100%",
+          maxWidth: 520,
+          boxShadow: t.cardShadow,
+          border: `1px solid ${t.border}`,
+          borderTop: `1px solid ${t.borderTopHighlight}`,
+          maxHeight: "80vh",
+          overflowY: "auto",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
         
         {/* Header */}
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:24 }}>
           <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-            <div style={{ width:48, height:48, borderRadius:16, background:"linear-gradient(135deg,#667eea,#764ba2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:800, color:"#fff" }}>
+            <div style={{ width:48, height:48, borderRadius:12, background:"rgba(255,255,255,0.06)", border:`1px solid ${t.border}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:700, color:t.textSecondary }}>
               {customer.Name?.charAt(0)}
             </div>
             <div>
@@ -66,8 +102,8 @@ export default function CustomerHistory({ customer, bookings, onClose }) {
                 </div>
                 <div style={{ textAlign:"right" }}>
                   <span style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:20,
-                    background:b.Status==="Confirmed"?"rgba(0,184,148,0.15)":b.Status==="Rejected"?"rgba(255,118,117,0.15)":"rgba(253,203,110,0.15)",
-                    color:b.Status==="Confirmed"?"#00b894":b.Status==="Rejected"?"#ff7675":"#fdcb6e"
+                    background:b.Status==="Confirmed"?"rgba(34,197,94,0.15)":b.Status==="Rejected"?"rgba(248,113,113,0.15)":"rgba(234,179,8,0.15)",
+                    color:b.Status==="Confirmed"?"#4ade80":b.Status==="Rejected"?"#f87171":"#fbbf24"
                   }}>{b.Status}</span>
                   {b.Status==="Confirmed" && <div style={{ fontSize:11, color:t.textMuted, marginTop:4 }}>₨{(SERVICE_PRICES[b.Service]||0).toLocaleString()}</div>}
                 </div>
@@ -76,6 +112,7 @@ export default function CustomerHistory({ customer, bookings, onClose }) {
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useStore } from "../store/useStore";
-import { useTheme } from "../context/ThemeContext";
-import Skeleton from "../components/Skeleton";
-import { useMobile } from "../hooks/useMobile";
+import { useTheme, cardStyle as obsidianCard } from "../context/ThemeContext";
 import HourglassLoader from "../components/HourglassLoader";
 
 function exportCSV(data) {
@@ -14,7 +12,7 @@ function exportCSV(data) {
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-function CalendarView({ slots, theme: t, dark }) {
+function CalendarView({ slots, theme: t }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
 
@@ -23,7 +21,6 @@ function CalendarView({ slots, theme: t, dark }) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date();
-  const isMobile = useMobile();
 
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
@@ -73,7 +70,7 @@ function CalendarView({ slots, theme: t, dark }) {
       `}</style>
       <div className="slots-cal-grid">
         {/* Calendar */}
-        <div style={{ background:t.cardBg, borderRadius:18, border:`1px solid ${t.border}`, padding:20, boxShadow:t.cardShadow }}>
+        <div style={{ ...obsidianCard(t), padding:20 }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
             <button onClick={prevMonth} style={{ width:36, height:36, borderRadius:10, border:`1px solid ${t.border}`, background:t.cardBg2, color:t.textPrimary, cursor:"pointer", fontSize:16, display:"flex", alignItems:"center", justifyContent:"center" }}>‹</button>
             <div style={{ fontWeight:800, fontSize:16, color:t.textPrimary }}>{MONTHS[month]} {year}</div>
@@ -88,31 +85,61 @@ function CalendarView({ slots, theme: t, dark }) {
 
           <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2 }}>
             {cells.map((day, i) => {
-              if (!day) return <div key={i} />;
+              if (!day) return <div key={`empty-${i}`} style={{ aspectRatio: "1" }} />;
               const dateStr = formatDate(day);
               const dot = getDotColor(dateStr);
               const isToday = today.getDate()===day && today.getMonth()===month && today.getFullYear()===year;
               const isSelected = selectedDay === day;
               const daySlots = slotsByDate[dateStr] || [];
+              const count = daySlots.length;
               return (
-                <div key={i} onClick={() => setSelectedDay(isSelected ? null : day)}
-                  style={{ aspectRatio:"1", borderRadius:10, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", cursor:"pointer", transition:"all .15s", position:"relative",
-                    background: isSelected ? "linear-gradient(135deg,#667eea,#764ba2)" : isToday ? "rgba(102,126,234,0.2)" : "transparent",
-                    border: isToday && !isSelected ? "1px solid rgba(102,126,234,0.4)" : "1px solid transparent",
+                <div key={dateStr} onClick={() => setSelectedDay(isSelected ? null : day)}
+                  style={{
+                    aspectRatio: "1",
+                    borderRadius: 10,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 3,
+                    cursor: "pointer",
+                    transition: "background 150ms cubic-bezier(0.16, 1, 0.3, 1), border-color 150ms cubic-bezier(0.16, 1, 0.3, 1)",
+                    overflow: "hidden",
+                    minWidth: 0,
+                    background: isSelected
+                      ? "linear-gradient(90deg, rgba(139,92,246,0.22), rgba(139,92,246,0.08))"
+                      : isToday
+                        ? "rgba(139,92,246,0.12)"
+                        : "transparent",
+                    border: isSelected
+                      ? "1px solid rgba(139,92,246,0.35)"
+                      : isToday
+                        ? "1px solid rgba(139,92,246,0.3)"
+                        : "1px solid transparent",
+                    boxShadow: isSelected ? "0 0 16px rgba(139,92,246,0.2)" : "none",
                   }}
-                  onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background=dark?"rgba(255,255,255,0.06)":"rgba(102,126,234,0.08)"; }}
-                  onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background=isToday?"rgba(102,126,234,0.2)":"transparent"; }}
+                  onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background="rgba(255,255,255,0.06)"; }}
+                  onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background=isToday?"rgba(139,92,246,0.12)":"transparent"; }}
                 >
-                  <span style={{ fontSize:12, fontWeight:isToday||isSelected?700:400, color:isSelected?"#fff":isToday?"#818cf8":t.textPrimary }}>{day}</span>
-                  {dot && (
-                    <div style={{ display:"flex", gap:2, marginTop:2 }}>
-                      {dot === "available" && <span style={{ width:4, height:4, borderRadius:"50%", background:"#43e97b", display:"inline-block" }} />}
-                      {dot === "booked"    && <span style={{ width:4, height:4, borderRadius:"50%", background:"#ff7675", display:"inline-block" }} />}
-                      {dot === "mixed"     && <><span style={{ width:4, height:4, borderRadius:"50%", background:"#43e97b", display:"inline-block" }} /><span style={{ width:4, height:4, borderRadius:"50%", background:"#ff7675", display:"inline-block" }} /></>}
-                    </div>
+                  <span style={{ fontSize:12, fontWeight:isToday||isSelected?700:400, color:isSelected||isToday?"#a78bfa":t.textPrimary, lineHeight:1 }}>{day}</span>
+                  {count > 0 && (
+                    <span
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        lineHeight: 1,
+                        color: isSelected ? "#c4b5fd" : "#a78bfa",
+                        opacity: 0.9,
+                      }}
+                    >
+                      {count}
+                    </span>
                   )}
-                  {daySlots.length > 0 && (
-                    <span style={{ position:"absolute", top:2, right:2, fontSize:8, fontWeight:700, background:"rgba(102,126,234,0.2)", color:"#818cf8", borderRadius:4, padding:"1px 3px" }}>{daySlots.length}</span>
+                  {dot && (
+                    <div style={{ display:"flex", gap:2, lineHeight:0 }}>
+                      {(dot === "available" || dot === "mixed") && <span style={{ width:4, height:4, borderRadius:"50%", background:"#4ade80", display:"inline-block", flexShrink:0 }} />}
+                      {(dot === "booked" || dot === "mixed") && <span style={{ width:4, height:4, borderRadius:"50%", background:"#f87171", display:"inline-block", flexShrink:0 }} />}
+                    </div>
                   )}
                 </div>
               );
@@ -120,7 +147,7 @@ function CalendarView({ slots, theme: t, dark }) {
           </div>
 
           <div style={{ display:"flex", gap:14, marginTop:16, paddingTop:14, borderTop:`1px solid ${t.border}`, flexWrap:"wrap" }}>
-            {[["#43e97b","Available"],["#ff7675","Booked"],["#818cf8","Today"]].map(([c,l]) => (
+            {[["#4ade80","Available"],["#f87171","Booked"],["#a78bfa","Today"]].map(([c,l]) => (
               <div key={l} style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:t.textMuted }}>
                 <span style={{ width:8, height:8, borderRadius:"50%", background:c, display:"inline-block" }} />{l}
               </div>
@@ -129,10 +156,17 @@ function CalendarView({ slots, theme: t, dark }) {
         </div>
 
         {/* Day detail panel */}
-        <div className="slots-day-panel" style={{ background:t.cardBg, borderRadius:18, border:`1px solid ${t.border}`, padding:18, boxShadow:t.cardShadow }}>
+        <div className="slots-day-panel" style={{ ...obsidianCard(t), padding:18 }}>
           {!selectedDay ? (
             <div style={{ height:"100%", minHeight:160, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", padding:20 }}>
-              <div style={{ fontSize:36, marginBottom:10 }}>📅</div>
+              <div style={{
+                width: 48, height: 48, borderRadius: 14, marginBottom: 12,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 18, color: t.accent,
+                background: "rgba(139,92,246,0.12)",
+                border: "1px solid rgba(139,92,246,0.25)",
+                boxShadow: "0 0 16px rgba(139,92,246,0.15)",
+              }}>◈</div>
               <div style={{ fontWeight:700, fontSize:14, color:t.textPrimary, marginBottom:6 }}>Select a date</div>
               <div style={{ fontSize:13, color:t.textMuted }}>Tap any date to see slots</div>
             </div>
@@ -148,7 +182,7 @@ function CalendarView({ slots, theme: t, dark }) {
                     <div key={i} style={{ padding:"12px 14px", borderRadius:12, background:s.Status==="Available"?"rgba(67,233,123,0.1)":"rgba(255,118,117,0.1)", border:`1px solid ${s.Status==="Available"?"rgba(67,233,123,0.25)":"rgba(255,118,117,0.25)"}` }}>
                       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:s["Booked By"]?6:0 }}>
                         <span style={{ fontWeight:700, fontSize:14, color:t.textPrimary }}>{s.Time}</span>
-                        <span style={{ fontSize:11, fontWeight:700, color:s.Status==="Available"?"#43e97b":"#ff7675", background:s.Status==="Available"?"rgba(67,233,123,0.15)":"rgba(255,118,117,0.15)", padding:"3px 8px", borderRadius:20 }}>{s.Status}</span>
+                        <span style={{ fontSize:11, fontWeight:700, color:s.Status==="Available"?"#4ade80":"#f87171", background:s.Status==="Available"?"rgba(34,197,94,0.15)":"rgba(248,113,113,0.15)", padding:"3px 8px", borderRadius:20 }}>{s.Status}</span>
                       </div>
                       {s["Booked By"] && <div style={{ fontSize:12, color:t.textMuted }}>👤 {s["Booked By"]}</div>}
                       {s.Phone && <div style={{ fontSize:12, color:t.textMuted }}>📞 {s.Phone}</div>}
@@ -167,7 +201,7 @@ function CalendarView({ slots, theme: t, dark }) {
 export default function Slots() {
   const slots = useStore(s => s.slots);
   const loading = useStore(s => s.loading);
-  const { theme: t, dark } = useTheme();
+  const { theme: t } = useTheme();
   const [search, setSearch] = useState("");
   const [view, setView] = useState("calendar");
   if (loading) return <HourglassLoader />;
@@ -175,14 +209,13 @@ export default function Slots() {
   const available = slots.filter(s=>s.Status==="Available").length;
   const filtered = slots.filter(s => s.Day?.toLowerCase().includes(search.toLowerCase()) || s["Booked By"]?.toLowerCase().includes(search.toLowerCase()));
 
-  const cardStyle = { background:t.cardBg, borderRadius:18, border:`1px solid ${t.border}`, boxShadow:t.cardShadow };
+  const panel = { ...obsidianCard(t) };
   const TH = { padding:"10px 12px", fontSize:11, fontWeight:700, color:t.thColor, textTransform:"uppercase", letterSpacing:0.8, textAlign:"left", background:t.thBg, borderBottom:`1px solid ${t.borderSub}` };
   const TD = { padding:"12px 12px", fontSize:13, color:t.tdColor, borderBottom:`1px solid ${t.borderSub}` };
 
   return (
-    <div style={{ padding:"20px 16px", maxWidth:1400, animation:"fadeIn .3s ease" }}>
+    <div style={{ padding:"20px 16px", maxWidth:1400 }}>
       <style>{`
-        @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         @media(max-width:768px){
           .slots-header{flex-direction:column!important;gap:10px!important;align-items:flex-start!important}
           .slots-header-btns{width:100%!important}
@@ -196,18 +229,18 @@ export default function Slots() {
           <p style={{ color:t.textMuted, fontSize:13, marginTop:5 }}>{available} available · {slots.length-available} booked</p>
         </div>
         <div className="slots-header-btns" style={{ display:"flex", gap:8 }}>
-          <button onClick={()=>setView(view==="table"?"calendar":"table")} style={{ padding:"9px 14px", borderRadius:12, border:`1px solid ${t.border}`, background:t.cardBg, color:t.textSecondary, fontWeight:600, fontSize:13, cursor:"pointer" }}>
-            {view==="table"?"📅 Calendar":"📋 Table"}
+          <button className="ui-interactive" onClick={()=>setView(view==="table"?"calendar":"table")} style={{ padding:"9px 14px", borderRadius:12, border:`1px solid ${t.border}`, background:t.cardBg, color:t.textSecondary, fontWeight:600, fontSize:13, cursor:"pointer" }}>
+            {view==="table"?"Calendar":"Table"}
           </button>
-          <button onClick={()=>exportCSV(slots)} style={{ padding:"9px 14px", borderRadius:12, border:`1px solid ${t.border}`, background:t.cardBg, color:t.textSecondary, fontWeight:600, fontSize:13, cursor:"pointer" }}>⬇ Export</button>
+          <button className="ui-interactive" onClick={()=>exportCSV(slots)} style={{ padding:"9px 14px", borderRadius:12, border:`1px solid ${t.border}`, background:t.cardBg, color:t.textSecondary, fontWeight:600, fontSize:13, cursor:"pointer" }}>Export</button>
         </div>
       </div>
 
       <div className="slots-statgrid" style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:12, marginBottom:20, maxWidth:480 }}>
-        {[{ label:"Available", value:available, icon:"✅", gradient:"linear-gradient(135deg,#43e97b,#38f9d7)", glow:"rgba(67,233,123,.3)" },
-          { label:"Booked", value:slots.length-available, icon:"🔒", gradient:"linear-gradient(135deg,#ff4757,#c0392b)", glow:"rgba(255,71,87,.3)" }].map(c=>(
-          <div key={c.label} style={{ ...cardStyle, padding:"16px 18px", display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ width:44, height:44, borderRadius:13, background:c.gradient, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, boxShadow:"0 6px 20px "+c.glow, flexShrink:0 }}>{c.icon}</div>
+        {[{ label:"Available", value:available, icon:"✓", gradient:"linear-gradient(145deg,#22c55e,#15803d)", glow:"0 0 32px rgba(34,197,94,0.35), 0 0 8px rgba(34,197,94,0.45) inset" },
+          { label:"Booked", value:slots.length-available, icon:"✱", gradient:"linear-gradient(145deg,#f43f5e,#be123c)", glow:"0 0 32px rgba(244,63,94,0.35), 0 0 8px rgba(244,63,94,0.45) inset" }].map(c=>(
+          <div key={c.label} style={{ ...panel, padding:"16px 18px", display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{ width:44, height:44, borderRadius:13, background:c.gradient, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:700, color:"#fff", boxShadow:c.glow, flexShrink:0 }}>{c.icon}</div>
             <div>
               <div style={{ fontSize:22, fontWeight:800, color:t.textPrimary }}>{c.value}</div>
               <div style={{ fontSize:12, color:t.textMuted, fontWeight:500 }}>{c.label}</div>
@@ -217,35 +250,35 @@ export default function Slots() {
       </div>
 
       {view === "calendar" ? (
-        <CalendarView slots={slots} theme={t} dark={dark} />
+        <CalendarView slots={slots} theme={t} />
       ) : (
         <>
           <div style={{ position:"relative", marginBottom:14 }}>
-            <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", fontSize:15, opacity:.35 }}>🔍</span>
+            <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", fontSize:13, color:t.textMuted }}>⌕</span>
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search slots..."
               style={{ width:"100%", padding:"11px 16px 11px 42px", borderRadius:12, background:t.inputBg, border:`1px solid ${t.border}`, fontSize:14, color:t.textPrimary, outline:"none" }}
-              onFocus={e=>e.target.style.border="1px solid #667eea"} onBlur={e=>e.target.style.border=`1px solid ${t.border}`} />
+              onFocus={e=>e.target.style.border="1px solid rgba(139,92,246,0.45)"} onBlur={e=>e.target.style.border=`1px solid ${t.border}`} />
           </div>
-          <div style={{ ...cardStyle, overflow:"hidden" }}>
+          <div style={{ ...panel, overflow:"hidden" }}>
             <div style={{ overflowX:"auto" }}>
-              <table style={{ width:"100%", borderCollapse:"collapse", minWidth:480 }}>
+              <table className="data-table" style={{ width:"100%", minWidth:480 }}>
                 <thead><tr>{["ID","Day","Date","Time","Status","Booked By","Phone"].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
                 <tbody>
                   {filtered.length===0
                     ? <tr><td colSpan={7} style={{ padding:"40px", textAlign:"center", color:t.textMuted, fontSize:14 }}>No slots found</td></tr>
                     : filtered.map((s,i)=>(
-                      <tr key={i} style={{ transition:"background .12s" }} onMouseEnter={e=>e.currentTarget.style.background=t.rowHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                      <tr key={i} onMouseEnter={e=>e.currentTarget.style.background=t.rowHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                         <td style={{ ...TD, fontFamily:"monospace", fontSize:11, color:t.textMuted }}>{s.ID}</td>
                         <td style={{ ...TD, fontWeight:600 }}>{s.Day}</td>
                         <td style={TD}>{s.Date}</td>
                         <td style={TD}>{s.Time}</td>
                         <td style={TD}>
-                          <span style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"4px 10px", borderRadius:20, fontSize:12, fontWeight:600, background:s.Status==="Available"?"rgba(67,233,123,0.15)":"rgba(255,118,117,0.15)", color:s.Status==="Available"?"#43e97b":"#ff7675" }}>
-                            <span style={{ width:5, height:5, borderRadius:"50%", background:s.Status==="Available"?"#43e97b":"#ff7675", display:"inline-block" }} />{s.Status}
+                          <span style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"4px 10px", borderRadius:20, fontSize:12, fontWeight:600, background:s.Status==="Available"?"rgba(34,197,94,0.15)":"rgba(248,113,113,0.15)", color:s.Status==="Available"?"#4ade80":"#f87171", border:`1px solid ${s.Status==="Available"?"rgba(34,197,94,0.3)":"rgba(248,113,113,0.3)"}`, boxShadow:s.Status==="Available"?"0 0 12px rgba(34,197,94,0.15)":"0 0 12px rgba(248,113,113,0.15)" }}>
+                            <span style={{ width:5, height:5, borderRadius:"50%", background:s.Status==="Available"?"#4ade80":"#f87171", display:"inline-block" }} />{s.Status}
                           </span>
                         </td>
                         <td style={TD}>{s["Booked By"]||"—"}</td>
-                        <td style={TD}>{s.Phone ? <a href={"https://wa.me/92"+(s.Phone||"").replace(/[^0-9]/g,"").replace(/^0/,"")} target="_blank" rel="noreferrer" style={{ color:"#00b894", fontWeight:600, textDecoration:"none" }}>{s.Phone} 💬</a> : "—"}</td>
+                        <td style={TD}>{s.Phone ? <a href={"https://wa.me/92"+(s.Phone||"").replace(/[^0-9]/g,"").replace(/^0/,"")} target="_blank" rel="noreferrer" style={{ color:"#4ade80", fontWeight:600, textDecoration:"none" }}>{s.Phone}</a> : "—"}</td>
                       </tr>
                     ))
                   }
