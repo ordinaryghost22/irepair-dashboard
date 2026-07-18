@@ -46,5 +46,7 @@ export const getLeads = () => apiFetch("/leads/");
 export const createLead = (lead) => apiFetch("/leads/", { method: "POST", body: JSON.stringify(lead) });
 
 // Chat
+export const getChatSessions = (limit = 100) =>
+  apiFetch(`/chat/sessions?limit=${encodeURIComponent(limit)}`);
 export const ownerChat = (messages) => apiFetch("/chat/owner", { method: "POST", body: JSON.stringify({ messages }) });
 export const customerChat = (message) => apiFetch("/chat/customer", { method: "POST", body: JSON.stringify({ message }) });

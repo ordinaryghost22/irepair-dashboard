@@ -3,17 +3,30 @@ import { useTheme } from "../context/ThemeContext";
 import { getBookingHistory } from "../api";
 
 /**
- * Read-only chatbot conversation for a booking.
- * Messages come from chat_sessions.history linked by booking_id.
+ * Read-only chatbot conversation bubbles.
+ * - Pass `messages` to render a history array directly (Chats page).
+ * - Pass `bookingId` to fetch via GET /bookings/{id}/history (booking History tab).
+ * If both are provided, `messages` wins and no fetch runs.
  */
-export default function ConversationHistory({ bookingId }) {
+export default function ConversationHistory({ bookingId, messages: messagesProp }) {
   const { theme: t } = useTheme();
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const useDirect = messagesProp !== undefined && messagesProp !== null;
+  const [messages, setMessages] = useState(useDirect ? (Array.isArray(messagesProp) ? messagesProp : []) : []);
+  const [loading, setLoading] = useState(!useDirect);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!bookingId) return;
+    if (useDirect) {
+      setMessages(Array.isArray(messagesProp) ? messagesProp : []);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    if (!bookingId) {
+      setMessages([]);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -31,7 +44,7 @@ export default function ConversationHistory({ bookingId }) {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [bookingId]);
+  }, [bookingId, useDirect, messagesProp]);
 
   if (loading) {
     return (
@@ -52,10 +65,14 @@ export default function ConversationHistory({ bookingId }) {
   if (messages.length === 0) {
     return (
       <div style={{ textAlign: "center", padding: "36px 0", color: t.textMuted, fontSize: 13 }}>
-        No chat history for this booking.
-        <div style={{ marginTop: 6, fontSize: 12 }}>
-          History appears for bookings made via the customer chatbot after linking is enabled.
-        </div>
+        {useDirect ? "No messages in this conversation." : (
+          <>
+            No chat history for this booking.
+            <div style={{ marginTop: 6, fontSize: 12 }}>
+              History appears for bookings made via the customer chatbot after linking is enabled.
+            </div>
+          </>
+        )}
       </div>
     );
   }
