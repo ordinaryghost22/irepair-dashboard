@@ -15,7 +15,16 @@ async function apiFetch(endpoint, options = {}) {
       ...options.headers,
     },
   });
-  if (!res.ok) throw new Error(`API error ${res.status}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const detail = err.detail;
+    const msg = typeof detail === "string"
+      ? detail
+      : Array.isArray(detail)
+        ? detail.map(d => d.msg || JSON.stringify(d)).join(", ")
+        : `API error ${res.status}`;
+    throw new Error(msg);
+  }
   return res.json();
 }
 
@@ -50,3 +59,32 @@ export const getChatSessions = (limit = 100) =>
   apiFetch(`/chat/sessions?limit=${encodeURIComponent(limit)}`);
 export const ownerChat = (messages) => apiFetch("/chat/owner", { method: "POST", body: JSON.stringify({ messages }) });
 export const customerChat = (message) => apiFetch("/chat/customer", { method: "POST", body: JSON.stringify({ message }) });
+
+// Invoices
+export const getInvoices = () => apiFetch("/invoices/");
+export const completeBookingWithInvoice = (bookingId, amount) =>
+  apiFetch(`/invoices/from-booking/${encodeURIComponent(bookingId)}`, {
+    method: "POST",
+    body: JSON.stringify({ amount: Number(amount) }),
+  });
+export const updateInvoiceStatus = (id, status) =>
+  apiFetch(`/invoices/${id}/status`, {
+    method: "PUT",
+    body: JSON.stringify({ status }),
+  });
+export async function downloadInvoicePdf(invoiceId, filename) {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/invoices/${invoiceId}/pdf`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error(`PDF download failed (${res.status})`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename || "invoice.pdf";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}

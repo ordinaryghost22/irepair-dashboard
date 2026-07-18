@@ -290,6 +290,11 @@ export default function PublicBooking() {
     setSubmitting(true);
     setError("");
 
+    const calculatedAmount =
+      form.deviceTier && form.service && TIER_PRICES[form.deviceTier]
+        ? TIER_PRICES[form.deviceTier][form.service]
+        : null;
+
     const booking = {
       name: form.name,
       phone: form.phone,
@@ -302,6 +307,7 @@ export default function PublicBooking() {
       status: "Pending",
       payment_status: "Unpaid",
       notes: form.notes || null,
+      ...(calculatedAmount != null ? { amount: calculatedAmount } : {}),
     };
 
     try {

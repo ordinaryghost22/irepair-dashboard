@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useStore } from "../store/useStore";
 import { useTheme } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
@@ -15,14 +16,22 @@ import HourglassLoader from "../components/HourglassLoader";
 import BookingManager from "../components/BookingManager";
 import { PaymentStatCards, PaymentStatusCycler } from "../components/PaymentStatus";
 import { usePaymentStatus } from "../hooks/usePaymentStatus";
+import { completeBookingWithInvoice } from "../api";
 
 
-function BookingModal({ booking, onClose, onConfirm, onReject }) {
+function BookingModal({ booking, onClose, onConfirm, onReject, onCompleted }) {
   const { theme:t } = useTheme();
+  const { showToast } = useToast();
+  const navigate = useNavigate();
   const [tab, setTab] = useState("details");
+  const [completeOpen, setCompleteOpen] = useState(false);
+  const [invoiceAmount, setInvoiceAmount] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     setTab("details");
+    setCompleteOpen(false);
+    setInvoiceAmount(booking?.amount != null && booking.amount !== "" ? String(booking.amount) : "");
   }, [booking?.["Booking ID"]]);
 
   if (!booking) return null;
@@ -59,8 +68,36 @@ function BookingModal({ booking, onClose, onConfirm, onReject }) {
     </button>
   );
 
+  const canComplete = booking.Status === "Confirmed" || booking.Status === "Pending";
+  const amountDisplay = booking.amount != null && booking.amount !== ""
+    ? `₨${Number(booking.amount).toLocaleString()}`
+    : null;
+
+  async function handleGenerateInvoice() {
+    const amount = Number(invoiceAmount);
+    if (Number.isNaN(amount) || amount < 0) {
+      showToast("Enter a valid amount", "error");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await completeBookingWithInvoice(booking["Booking ID"], amount);
+      showToast("Booking completed — invoice created");
+      onCompleted?.(booking["Booking ID"], amount);
+      setCompleteOpen(false);
+      onClose();
+      navigate("/invoices");
+    } catch (err) {
+      console.error(err);
+      showToast(err.message || "Failed to complete booking", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
-    <Modal open={!!booking} onClose={() => { setTab("details"); onClose(); }} maxWidth={480}>
+    <>
+    <Modal open={!!booking && !completeOpen} onClose={() => { setTab("details"); onClose(); }} maxWidth={480}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:18 }}>
         <div>
           <div style={{ fontSize:20, fontWeight:800, color:t.textPrimary, letterSpacing:-0.5 }}>{booking.Name}</div>
@@ -79,9 +116,11 @@ function BookingModal({ booking, onClose, onConfirm, onReject }) {
           <div style={{ display:"grid", gap:8, marginBottom:18 }}>
             {row("📞","Phone",formatPhone(booking.Phone))}
             {row("📧","Email",booking.Email)}
+            {row("📱","Device",booking.Device)}
             {row("📅","Date",formatDate(booking.Date))}
             {row("🕐","Time",booking.Time)}
             {row("🔧","Service",booking.Service)}
+            {row("💰","Amount",amountDisplay)}
             {booking.Notes && (
               <div style={{ padding:"11px 14px", background:t.name==="dark"?"rgba(234,179,8,0.08)":"#fffbf0", borderRadius:12, border:`1px solid ${t.name==="dark"?"rgba(234,179,8,0.2)":"#fde9a0"}`, fontSize:13, color:t.textSecondary }}>
                 📝 {booking.Notes}
@@ -93,9 +132,35 @@ function BookingModal({ booking, onClose, onConfirm, onReject }) {
             💬 WhatsApp {booking.Name}
           </a>
           {booking.Status==="Pending" && (
-            <div style={{ display:"flex", gap:12 }}>
+            <div style={{ display:"flex", gap:12, marginBottom: canComplete ? 12 : 0 }}>
               <button onClick={()=>{onConfirm(booking["Booking ID"],booking.Name);onClose();}} style={{ flex:1,padding:"13px",borderRadius:13,border:"none",background:"linear-gradient(135deg,#22c55e,#16a34a)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 6px 20px rgba(34,197,94,.3)" }}>✓ Confirm</button>
               <button onClick={()=>{onReject(booking["Booking ID"],booking.Name);onClose();}}  style={{ flex:1,padding:"13px",borderRadius:13,border:"none",background:"linear-gradient(135deg,#ef4444,#dc2626)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 6px 20px rgba(239,68,68,.3)" }}>✕ Reject</button>
+            </div>
+          )}
+          {canComplete && (
+            <button
+              onClick={() => {
+                setInvoiceAmount(booking.amount != null && booking.amount !== "" ? String(booking.amount) : "");
+                setCompleteOpen(true);
+              }}
+              style={{
+                width: "100%", padding: "13px", borderRadius: 13, border: "none",
+                background: "linear-gradient(135deg,#6366f1,#4f46e5)", color: "#fff",
+                fontWeight: 700, fontSize: 14, cursor: "pointer",
+                boxShadow: "0 6px 20px rgba(99,102,241,.3)",
+              }}
+            >
+              ✓ Mark Completed
+            </button>
+          )}
+          {booking.Status === "Completed" && (
+            <div style={{
+              padding: "12px 14px", borderRadius: 12, fontSize: 13, fontWeight: 600, textAlign: "center",
+              background: t.name === "dark" ? "rgba(99,102,241,0.12)" : "#eef2ff",
+              color: t.name === "dark" ? "#a5b4fc" : "#4338ca",
+              border: `1px solid ${t.name === "dark" ? "rgba(99,102,241,0.25)" : "#c7d2fe"}`,
+            }}>
+              Completed — invoice generated
             </div>
           )}
         </>
@@ -108,6 +173,59 @@ function BookingModal({ booking, onClose, onConfirm, onReject }) {
         </div>
       )}
     </Modal>
+
+    {/* Invoice amount confirmation before completing */}
+    <Modal open={completeOpen} onClose={() => !submitting && setCompleteOpen(false)} maxWidth={400}>
+      <div style={{ fontSize: 18, fontWeight: 800, color: t.textPrimary, marginBottom: 6 }}>Complete &amp; invoice</div>
+      <p style={{ fontSize: 13, color: t.textSecondary, marginBottom: 18, lineHeight: 1.5 }}>
+        Set the final amount for <strong style={{ color: t.textPrimary }}>{booking.Name}</strong>
+        {booking.Service ? ` · ${booking.Service}` : ""}. You can override the quoted price.
+      </p>
+      <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 8 }}>
+        Invoice amount (₨)
+      </label>
+      <input
+        type="number"
+        min="0"
+        step="1"
+        value={invoiceAmount}
+        onChange={e => setInvoiceAmount(e.target.value)}
+        placeholder="0"
+        style={{
+          width: "100%", padding: "12px 14px", borderRadius: 12, marginBottom: 18,
+          background: t.inputBg, border: `1px solid ${t.border}`, fontSize: 16, fontWeight: 600,
+          color: t.textPrimary, outline: "none",
+        }}
+        onFocus={e => e.target.style.border = `1px solid ${t.accent}`}
+        onBlur={e => e.target.style.border = `1px solid ${t.border}`}
+      />
+      <div style={{ display: "flex", gap: 10 }}>
+        <button
+          disabled={submitting}
+          onClick={() => setCompleteOpen(false)}
+          style={{
+            flex: 1, padding: "12px", borderRadius: 12, cursor: "pointer", fontWeight: 600, fontSize: 13,
+            background: t.cardBg2, border: `1px solid ${t.border}`, color: t.textSecondary,
+          }}
+        >
+          Cancel
+        </button>
+        <button
+          disabled={submitting}
+          onClick={handleGenerateInvoice}
+          style={{
+            flex: 1, padding: "12px", borderRadius: 12, border: "none", cursor: "pointer",
+            fontWeight: 700, fontSize: 13, color: "#fff",
+            background: "linear-gradient(135deg,#6366f1,#4f46e5)",
+            opacity: submitting ? 0.7 : 1,
+            boxShadow: "0 6px 20px rgba(99,102,241,.3)",
+          }}
+        >
+          {submitting ? "Creating…" : "Confirm & Invoice"}
+        </button>
+      </div>
+    </Modal>
+    </>
   );
 }
 
@@ -116,6 +234,7 @@ export default function Bookings() {
   const loading         = useStore(s => s.loading);
   const storeConfirm    = useStore(s => s.confirmBooking);
   const storeReject     = useStore(s => s.rejectBooking);
+  const fetchAll        = useStore(s => s.fetchAll);
   const { theme:t }     = useTheme();
   const { showToast }   = useToast();
   const isMobile = useMobile();
@@ -130,6 +249,17 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
   if (!window.confirm("Delete this booking?")) return;
   await deleteBooking(bookingId);
 }
+
+  function handleCompleted(bookingId, amount) {
+    useStore.setState(state => ({
+      bookings: state.bookings.map(b =>
+        b["Booking ID"] === bookingId
+          ? { ...b, Status: "Completed", amount }
+          : b
+      ),
+    }));
+    setTimeout(() => fetchAll(true, showToast), 1500);
+  }
 
   if (loading) return <HourglassLoader />;
 
@@ -158,7 +288,13 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
         }
       `}</style>
 
-      <BookingModal booking={selected} onClose={()=>setSelected(null)} onConfirm={confirmBooking} onReject={rejectBooking} />
+      <BookingModal
+        booking={selected}
+        onClose={()=>setSelected(null)}
+        onConfirm={confirmBooking}
+        onReject={rejectBooking}
+        onCompleted={handleCompleted}
+      />
       <CustomerHistory customer={customer} bookings={bookings} onClose={()=>setCustomer(null)} />
 
       <div className="bk-header" style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:20 }}>
@@ -182,7 +318,7 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
             onFocus={e=>e.target.style.border=`1px solid ${t.accent}`} onBlur={e=>e.target.style.border=`1px solid ${t.border}`} />
         </div>
         <div className="bk-filters" style={{ display:"flex", gap:6 }}>
-          {["All","Pending","Confirmed","Rejected"].map(s=>(
+          {["All","Pending","Confirmed","Completed","Rejected"].map(s=>(
             <button key={s} onClick={()=>setFilter(s)} style={{ padding:"9px 14px", borderRadius:10, fontSize:12, fontWeight:600, cursor:"pointer", transition:"all .15s", whiteSpace:"nowrap",
               background:filter===s?"linear-gradient(135deg,#667eea,#764ba2)":t.cardBg,
               color:filter===s?"#fff":t.textSecondary, border:filter===s?"1px solid transparent":`1px solid ${t.border}`,
@@ -213,12 +349,13 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
                   <td style={TD} onClick={e => e.stopPropagation()}>
   <button
     onClick={async () => {
+      if (b.Status === "Completed" || b.Status === "Cancelled") return;
       const cycle = { "Pending": "Confirmed", "Confirmed": "Rejected", "Rejected": "Pending" };
       const next = cycle[b.Status] || "Pending";
       if (!window.confirm(`Change status to ${next}?`)) return;
       await updateBookingStatus(b["Booking ID"], next);
     }}
-    style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+    style={{ background: "none", border: "none", cursor: (b.Status === "Completed" || b.Status === "Cancelled") ? "default" : "pointer", padding: 0 }}
   >
     <StatusBadge status={b.Status} />
   </button>

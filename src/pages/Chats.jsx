@@ -12,6 +12,11 @@ function customerLabel(collected) {
   if (name) return name;
   const phone = (c.phone || "").toString().trim();
   if (phone) return phone;
+  const device = (c.device || "").toString().trim();
+  const issue = (c.issue || "").toString().trim();
+  if (device && issue) return `${device} — ${issue}`;
+  if (device) return device;
+  if (issue) return issue;
   return "Unknown";
 }
 
