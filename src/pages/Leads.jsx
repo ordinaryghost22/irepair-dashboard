@@ -31,8 +31,7 @@ export default function Leads() {
           .leads-header{flex-direction:column!important;gap:10px!important;align-items:flex-start!important}
           .leads-header button{width:100%!important}
           .leads-table th:nth-child(4),.leads-table td:nth-child(4),
-          .leads-table th:nth-child(5),.leads-table td:nth-child(5),
-          .leads-table th:nth-child(6),.leads-table td:nth-child(6){display:none}
+          .leads-table th:nth-child(5),.leads-table td:nth-child(5){display:none}
         }
       `}</style>
       <div className="leads-header" style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
@@ -52,7 +51,7 @@ export default function Leads() {
         <div style={{ background:t.cardBg, borderRadius:18, border:`1px solid ${t.border}`, boxShadow:t.cardShadow, overflow:"hidden" }}>
           <div style={{ overflowX:"auto" }}>
             <table className="leads-table" style={{ width:"100%", borderCollapse:"collapse", minWidth:320 }}>
-              <thead><tr>{["Name","Phone","Device","Issue","Date","Time Ago"].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
+              <thead><tr>{["Name","Phone","Device","Issue","First Contact"].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
               <tbody>
                 {filtered.map((l,i)=>(
                   <tr key={i} style={{transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=t.rowHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
@@ -60,8 +59,10 @@ export default function Leads() {
                     <td style={TD}><a href={whatsappLink(l.Phone)} target="_blank" rel="noreferrer" style={{color:"#22c55e",fontWeight:600,textDecoration:"none"}}>{formatPhone(l.Phone)} 💬</a></td>
                     <td style={TD}>{l.Device||"—"}</td>
                     <td style={{...TD,color:t.textMuted}}>{l.Issue||"—"}</td>
-                    <td style={TD}>{formatDate(l.created_at)}</td>
-                    <td style={{...TD,color:t.textMuted,fontSize:12}}>{timeAgo(l.created_at)}</td>
+                    <td style={TD}>
+                      <div>{formatDate(l.created_at)}</div>
+                      <div style={{ color: t.textMuted, fontSize: 12, marginTop: 2 }}>{timeAgo(l.created_at)}</div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

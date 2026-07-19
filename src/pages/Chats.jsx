@@ -4,8 +4,11 @@ import EmptyState from "../components/EmptyState";
 import Skeleton from "../components/Skeleton";
 import Modal from "../components/Modal";
 import ConversationHistory from "../components/ConversationHistory";
+import StatusBadge from "../components/StatusBadge";
 import { getChatSessions } from "../api";
 import { STATUS_COLORS } from "../constants";
+import { useStore } from "../store/useStore";
+import { getCustomerTier } from "../utils/customerTier";
 
 function customerLabel(collected) {
   const c = collected && typeof collected === "object" ? collected : {};
@@ -77,6 +80,8 @@ function BookingBadge({ booked }) {
 
 export default function Chats() {
   const { theme: t } = useTheme();
+  const bookings = useStore((s) => s.bookings);
+  const invoices = useStore((s) => s.invoices);
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -123,6 +128,8 @@ export default function Chats() {
           {sessions.map((session) => {
             const label = customerLabel(session.collected);
             const booked = Boolean(session.booking_id);
+            const phone = session.collected?.phone;
+            const tier = getCustomerTier(phone, bookings, invoices);
             return (
               <div
                 key={session.session_id}
@@ -160,7 +167,10 @@ export default function Chats() {
                       Last active · {formatUpdatedAt(session.updated_at)}
                     </div>
                   </div>
-                  <BookingBadge booked={booked} />
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "flex-end" }}>
+                    <BookingBadge booked={booked} />
+                    {tier && <StatusBadge status={tier} />}
+                  </div>
                 </div>
                 <div style={{ fontSize: 13, color: t.textSecondary, lineHeight: 1.5 }}>{previewText(session.history)}</div>
               </div>
@@ -170,11 +180,16 @@ export default function Chats() {
       )}
 
       <Modal open={!!selected} onClose={() => setSelected(null)} maxWidth={520}>
-        {selected && (
-          <>
+        {selected && (() => {
+          const selectedTier = getCustomerTier(selected.collected?.phone, bookings, invoices);
+          return (
+          <div style={{ padding: 24, overflowY: "auto", minHeight: 0 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: t.textPrimary }}>{customerLabel(selected.collected)}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: t.textPrimary }}>{customerLabel(selected.collected)}</div>
+                  {selectedTier && <StatusBadge status={selectedTier} />}
+                </div>
                 <div style={{ fontSize: 12, color: t.textMuted, marginTop: 6 }}>
                   {formatUpdatedAt(selected.updated_at)}
                   {selected.booking_id ? ` · ${selected.booking_id}` : ""}
@@ -213,8 +228,9 @@ export default function Chats() {
               </div>
               <ConversationHistory messages={selected.history || []} />
             </div>
-          </>
-        )}
+          </div>
+          );
+        })()}
       </Modal>
     </div>
   );

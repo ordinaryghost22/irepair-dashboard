@@ -135,7 +135,8 @@ export default function Security() {
         </div>
         <div className="sec-featgrid" style={{ display: "grid", gap: 10 }}>
           {[
-            ["Session timeout", "Auto-logout after 30 min inactivity"],
+            ["Session timeout", "Soft-lock with Quick PIN if set; otherwise logout after 30 min idle"],
+            ["Quick PIN unlock", "Optional 4–6 digit PIN — set in Settings; password fallback on lock screen"],
             ["Login rate limiting", "Account locked after 5 failed attempts for 15 min"],
             ["Activity tracking", "All events logged with timestamp"],
             ["Idle detection", "Tracks mouse, keyboard & scroll activity"],

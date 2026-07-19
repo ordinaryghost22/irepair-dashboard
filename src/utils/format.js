@@ -26,7 +26,23 @@ export function formatPhone(phone) {
   const c = String(phone).replace(/\D/g, "");
   if (c.length === 11 && c.startsWith("92")) return `+${c.slice(0,2)} ${c.slice(2,5)} ${c.slice(5)}`;
   if (c.length === 10) return `+92 ${c.slice(0,3)} ${c.slice(3)}`;
+  if (c.length === 12 && c.startsWith("92")) return `+${c.slice(0,2)} ${c.slice(2,5)} ${c.slice(5)}`;
   return phone;
+}
+
+/** Digits key for matching phones across legacy formats (0300… vs +92…). */
+export function phoneKey(phone) {
+  if (!phone) return "";
+  let digits = String(phone).replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("0")) digits = "92" + digits.slice(1);
+  else if (digits.length === 10) digits = "92" + digits;
+  return digits;
+}
+
+export function phonesMatch(a, b) {
+  const ka = phoneKey(a);
+  const kb = phoneKey(b);
+  return Boolean(ka && kb && ka === kb);
 }
 export function truncate(text, max=50) {
   if (!text) return "";

@@ -79,15 +79,15 @@ export default function BookingManager() {
     const booking = { ...form };
     try {
       if (modal === "add") {
-        addBooking(booking);
+        await addBooking(booking);
         await syncToSheets("add", booking);
       } else {
-        updateBooking(booking.id, booking);
+        await updateBooking(booking.id, booking);
         await syncToSheets("edit", booking);
       }
       closeModal();
     } catch (err) {
-      setError(`Sync failed: ${err.message}. Change saved locally.`);
+      setError(err.message || `Sync failed. Change may not have saved.`);
     } finally {
       setSaving(false);
     }

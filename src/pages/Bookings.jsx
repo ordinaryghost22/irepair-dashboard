@@ -10,14 +10,16 @@ import EmptyState from "../components/EmptyState";
 import CustomerHistory from "../components/CustomerHistory";
 import ConversationHistory from "../components/ConversationHistory";
 import { exportToCSV } from "../utils/export";
-import { formatDate, formatPhone, whatsappLink } from "../utils/format";
+import { formatDate, formatPhone, whatsappLink, phoneKey } from "../utils/format";
+import { isStalePending } from "../utils/sla";
+import { getCustomerTier } from "../utils/customerTier";
 import BookingManager from "../components/BookingManager";
 import { PaymentStatCards, PaymentStatusCycler } from "../components/PaymentStatus";
 import { usePaymentStatus } from "../hooks/usePaymentStatus";
-import { completeBookingWithInvoice } from "../api";
+import { completeBookingWithInvoice, updateBooking } from "../api";
 
 
-function BookingModal({ booking, onClose, onConfirm, onReject, onCompleted }) {
+function BookingModal({ booking, bookings, invoices, onClose, onConfirm, onReject, onCompleted, onNotesSaved }) {
   const { theme:t } = useTheme();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -25,21 +27,41 @@ function BookingModal({ booking, onClose, onConfirm, onReject, onCompleted }) {
   const [completeOpen, setCompleteOpen] = useState(false);
   const [invoiceAmount, setInvoiceAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
 
   useEffect(() => {
     setTab("details");
     setCompleteOpen(false);
     setInvoiceAmount(booking?.amount != null && booking.amount !== "" ? String(booking.amount) : "");
-  }, [booking?.["Booking ID"]]);
+    setNotes(booking?.Notes || "");
+  }, [booking?.["Booking ID"], booking?.Notes]);
 
   if (!booking) return null;
 
+  const tier = getCustomerTier(booking.Phone, bookings, invoices);
+  const notesDirty = (notes || "") !== (booking.Notes || "");
+
+  async function handleSaveNotes() {
+    setSavingNotes(true);
+    try {
+      await updateBooking(encodeURIComponent(booking["Booking ID"]), { notes: notes || null });
+      onNotesSaved?.(booking["Booking ID"], notes || "");
+      showToast("Notes saved");
+    } catch (err) {
+      console.error(err);
+      showToast(err.message || "Failed to save notes", "error");
+    } finally {
+      setSavingNotes(false);
+    }
+  }
+
   const row = (icon, label, val) => val ? (
-    <div key={label} style={{ display:"flex", gap:12, alignItems:"center", padding:"11px 14px", background:t.cardBg2, borderRadius:12, border:`1px solid ${t.borderSub}` }}>
-      <span style={{ fontSize:16 }}>{icon}</span>
-      <div>
-        <div style={{ fontSize:11, color:t.textMuted, fontWeight:700, textTransform:"uppercase", letterSpacing:.7 }}>{label}</div>
-        <div style={{ fontSize:14, color:t.textPrimary, fontWeight:500, marginTop:2 }}>{val}</div>
+    <div key={label} style={{ display:"flex", gap:10, alignItems:"center", padding:"7px 11px", background:t.cardBg2, borderRadius:10, border:`1px solid ${t.borderSub}` }}>
+      <span style={{ fontSize:14 }}>{icon}</span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize:10, color:t.textMuted, fontWeight:700, textTransform:"uppercase", letterSpacing:.6 }}>{label}</div>
+        <div style={{ fontSize:13, color:t.textPrimary, fontWeight:500, marginTop:1 }}>{val}</div>
       </div>
     </div>
   ) : null;
@@ -52,8 +74,8 @@ function BookingModal({ booking, onClose, onConfirm, onReject, onCompleted }) {
       onClick={() => setTab(id)}
       style={{
         flex: 1,
-        padding: "9px 12px",
-        borderRadius: 10,
+        padding: "8px 10px",
+        borderRadius: 9,
         fontSize: 12,
         fontWeight: 600,
         cursor: "pointer",
@@ -93,48 +115,104 @@ function BookingModal({ booking, onClose, onConfirm, onReject, onCompleted }) {
     }
   }
 
+  const padX = 20;
+  const hasFooterActions =
+    booking.Status === "Pending" || canComplete || booking.Status === "Completed";
+
   return (
     <>
-    <Modal open={!!booking && !completeOpen} onClose={() => { setTab("details"); onClose(); }} maxWidth={480}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:18 }}>
-        <div>
-          <div style={{ fontSize:20, fontWeight:800, color:t.textPrimary, letterSpacing:-0.5 }}>{booking.Name}</div>
-          <div style={{ marginTop:8 }}><StatusBadge status={booking.Status} /></div>
+    <Modal open={!!booking && !completeOpen} onClose={() => { setTab("details"); onClose(); }} maxWidth={480} maxHeight="90vh">
+      {/* Sticky header — close always visible */}
+      <div style={{ flexShrink: 0, padding: `${16}px ${padX}px 0`, display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap: 12 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize:18, fontWeight:800, color:t.textPrimary, letterSpacing:-0.4, lineHeight:1.25 }}>{booking.Name}</div>
+          <div style={{ marginTop:6, display:"flex", flexWrap:"wrap", gap:6 }}>
+            <StatusBadge status={booking.Status} />
+            {tier && <StatusBadge status={tier} />}
+          </div>
         </div>
-        <button onClick={() => { setTab("details"); onClose(); }} style={{ background:t.cardBg2, border:`1px solid ${t.border}`, borderRadius:10, width:36, height:36, cursor:"pointer", fontSize:20, display:"flex", alignItems:"center", justifyContent:"center", color:t.textSecondary }}>×</button>
+        <button
+          type="button"
+          onClick={() => { setTab("details"); onClose(); }}
+          style={{ flexShrink: 0, background:t.cardBg2, border:`1px solid ${t.border}`, borderRadius:10, width:34, height:34, cursor:"pointer", fontSize:18, display:"flex", alignItems:"center", justifyContent:"center", color:t.textSecondary }}
+        >×</button>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+      <div style={{ flexShrink: 0, display: "flex", gap: 6, margin: `12px ${padX}px 0` }}>
         {tabBtn("details", "Details")}
         {tabBtn("history", "History")}
       </div>
 
-      {tab === "details" ? (
-        <>
-          <div style={{ display:"grid", gap:8, marginBottom:18 }}>
-            {row("📞","Phone",formatPhone(booking.Phone))}
-            {row("📧","Email",booking.Email)}
-            {row("📱","Device",booking.Device)}
-            {row("📅","Date",formatDate(booking.Date))}
-            {row("🕐","Time",booking.Time)}
-            {row("🔧","Service",booking.Service)}
-            {row("📣","Source",booking.Source)}
-            {row("💰","Amount",amountDisplay)}
-            {booking.Notes && (
-              <div style={{ padding:"11px 14px", background:"rgba(255,255,255,0.04)", borderRadius:10, border:`1px solid ${t.border}`, fontSize:13, color:t.textSecondary }}>
-                {booking.Notes}
+      {/* Scrollable body */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: `12px ${padX}px ${hasFooterActions && tab === "details" ? 8 : 16}px` }}>
+        {tab === "details" ? (
+          <>
+            <div style={{ display:"grid", gap:5, marginBottom:12 }}>
+              {row("📞","Phone",formatPhone(booking.Phone))}
+              {row("📧","Email",booking.Email)}
+              {row("📱","Device",booking.Device)}
+              {row("📅","Date",formatDate(booking.Date))}
+              {row("🕐","Time",booking.Time)}
+              {row("🔧","Service",booking.Service)}
+              {row("📣","Source",booking.Source)}
+              {row("💰","Amount",amountDisplay)}
+              <div style={{ padding:"8px 11px", background:t.cardBg2, borderRadius:10, border:`1px solid ${t.borderSub}` }}>
+                <div style={{ fontSize:10, color:t.textMuted, fontWeight:700, textTransform:"uppercase", letterSpacing:.6, marginBottom:6 }}>Notes</div>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Add internal notes about this customer or booking…"
+                  style={{
+                    width: "100%", padding: "8px 10px", borderRadius: 8, resize: "vertical",
+                    background: t.inputBg, border: `1px solid ${t.border}`, fontSize: 13,
+                    color: t.textPrimary, outline: "none", boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  type="button"
+                  className="ui-interactive"
+                  disabled={!notesDirty || savingNotes}
+                  onClick={handleSaveNotes}
+                  style={{
+                    ...secondaryBtnStyle(t),
+                    marginTop: 6, padding: "6px 12px", fontSize: 12,
+                    opacity: !notesDirty || savingNotes ? 0.5 : 1,
+                    cursor: !notesDirty || savingNotes ? "default" : "pointer",
+                  }}
+                >
+                  {savingNotes ? "Saving…" : "Save notes"}
+                </button>
               </div>
-            )}
+            </div>
+            <a href={whatsappLink(booking.Phone)} target="_blank" rel="noreferrer"
+              className="ui-interactive"
+              style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"10px", borderRadius:10, background:"transparent", color:t.textSecondary, fontWeight:600, fontSize:13, textDecoration:"none", border:`1px solid rgba(255,255,255,0.12)` }}>
+              WhatsApp {booking.Name}
+            </a>
+          </>
+        ) : (
+          <div style={{ background: t.cardBg2, borderRadius: 12, border: `1px solid ${t.border}`, padding: 12 }}>
+            <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 10 }}>
+              Conversation · read-only
+            </div>
+            <ConversationHistory bookingId={booking["Booking ID"]} />
           </div>
-          <a href={whatsappLink(booking.Phone)} target="_blank" rel="noreferrer"
-            className="ui-interactive"
-            style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"12px", borderRadius:10, background:"transparent", color:t.textSecondary, fontWeight:600, fontSize:14, textDecoration:"none", marginBottom:14, border:`1px solid rgba(255,255,255,0.12)` }}>
-            WhatsApp {booking.Name}
-          </a>
+        )}
+      </div>
+
+      {/* Sticky footer actions — Confirm/Reject stay visible */}
+      {tab === "details" && hasFooterActions && (
+        <div style={{
+          flexShrink: 0,
+          padding: `10px ${padX}px 16px`,
+          borderTop: `1px solid ${t.border}`,
+          background: t.cardBg,
+        }}>
           {booking.Status==="Pending" && (
-            <div style={{ display:"flex", gap:12, marginBottom: canComplete ? 12 : 0 }}>
-              <button className="ui-interactive" onClick={()=>{onConfirm(booking["Booking ID"],booking.Name);onClose();}} style={{ ...primaryBtnStyle(t), flex:1, padding:"13px", fontSize:14 }}>Confirm</button>
-              <button className="ui-interactive" onClick={()=>{onReject(booking["Booking ID"],booking.Name);onClose();}}  style={{ ...secondaryBtnStyle(t), flex:1, padding:"13px", fontSize:14 }}>Reject</button>
+            <div style={{ display:"flex", gap:10, marginBottom: canComplete ? 8 : 0 }}>
+              <button className="ui-interactive" onClick={()=>{onConfirm(booking["Booking ID"],booking.Name);onClose();}} style={{ ...primaryBtnStyle(t), flex:1, padding:"11px", fontSize:13 }}>Confirm</button>
+              <button className="ui-interactive" onClick={()=>{onReject(booking["Booking ID"],booking.Name);onClose();}}  style={{ ...secondaryBtnStyle(t), flex:1, padding:"11px", fontSize:13 }}>Reject</button>
             </div>
           )}
           {canComplete && (
@@ -146,7 +224,7 @@ function BookingModal({ booking, onClose, onConfirm, onReject, onCompleted }) {
               }}
               style={{
                 ...primaryBtnStyle(t),
-                width: "100%", padding: "13px", fontSize: 14,
+                width: "100%", padding: "11px", fontSize: 13,
               }}
             >
               Mark Completed
@@ -154,7 +232,7 @@ function BookingModal({ booking, onClose, onConfirm, onReject, onCompleted }) {
           )}
           {booking.Status === "Completed" && (
             <div style={{
-              padding: "12px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600, textAlign: "center",
+              padding: "10px 12px", borderRadius: 10, fontSize: 12, fontWeight: 600, textAlign: "center",
               background: "rgba(255,255,255,0.06)",
               color: t.textSecondary,
               border: `1px solid ${t.border}`,
@@ -162,19 +240,13 @@ function BookingModal({ booking, onClose, onConfirm, onReject, onCompleted }) {
               Completed — invoice generated
             </div>
           )}
-        </>
-      ) : (
-        <div style={{ background: t.cardBg2, borderRadius: 14, border: `1px solid ${t.border}`, padding: 14 }}>
-          <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 12 }}>
-            Conversation · read-only
-          </div>
-          <ConversationHistory bookingId={booking["Booking ID"]} />
         </div>
       )}
     </Modal>
 
     {/* Invoice amount confirmation before completing */}
-    <Modal open={completeOpen} onClose={() => !submitting && setCompleteOpen(false)} maxWidth={400}>
+    <Modal open={completeOpen} onClose={() => !submitting && setCompleteOpen(false)} maxWidth={400} maxHeight="90vh">
+      <div style={{ padding: 24 }}>
       <div style={{ fontSize: 18, fontWeight: 800, color: t.textPrimary, marginBottom: 6 }}>Complete &amp; invoice</div>
       <p style={{ fontSize: 13, color: t.textSecondary, marginBottom: 18, lineHeight: 1.5 }}>
         Set the final amount for <strong style={{ color: t.textPrimary }}>{booking.Name}</strong>
@@ -193,7 +265,7 @@ function BookingModal({ booking, onClose, onConfirm, onReject, onCompleted }) {
         style={{
           width: "100%", padding: "12px 14px", borderRadius: 12, marginBottom: 18,
           background: t.inputBg, border: `1px solid ${t.border}`, fontSize: 16, fontWeight: 600,
-          color: t.textPrimary, outline: "none",
+          color: t.textPrimary, outline: "none", boxSizing: "border-box",
         }}
         onFocus={e => e.target.style.border = `1px solid ${t.accent}`}
         onBlur={e => e.target.style.border = `1px solid ${t.border}`}
@@ -220,6 +292,7 @@ function BookingModal({ booking, onClose, onConfirm, onReject, onCompleted }) {
           {submitting ? "Creating…" : "Confirm & Invoice"}
         </button>
       </div>
+      </div>
     </Modal>
     </>
   );
@@ -227,6 +300,7 @@ function BookingModal({ booking, onClose, onConfirm, onReject, onCompleted }) {
 
 export default function Bookings() {
   const bookings        = useStore(s => s.bookings);
+  const invoices        = useStore(s => s.invoices);
   const loading         = useStore(s => s.loading);
   const storeConfirm    = useStore(s => s.confirmBooking);
   const storeReject     = useStore(s => s.rejectBooking);
@@ -256,6 +330,17 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
     setTimeout(() => fetchAll(true, showToast), 1500);
   }
 
+  function handleNotesSaved(bookingId, notes) {
+    useStore.setState(state => ({
+      bookings: state.bookings.map(b =>
+        b["Booking ID"] === bookingId ? { ...b, Notes: notes } : b
+      ),
+    }));
+    setSelected(prev =>
+      prev && prev["Booking ID"] === bookingId ? { ...prev, Notes: notes } : prev
+    );
+  }
+
   if (loading) return <Skeleton rows={8} />;
 
   const TH = { padding:"10px 12px", fontSize:11, fontWeight:600, color:t.thColor, textTransform:"uppercase", letterSpacing:0.8, textAlign:"left", background:"transparent", borderBottom:`1px solid ${t.border}` };
@@ -268,6 +353,17 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
 
   const confirmBooking = (id, name) => storeConfirm(id, name, showToast);
   const rejectBooking  = (id, name) => storeReject(id, name, showToast);
+
+  // Precompute tiers once for table rows (avoids N×full scans in JSX)
+  const tierByPhoneKey = (() => {
+    const map = new Map();
+    for (const b of bookings) {
+      const key = phoneKey(b.Phone);
+      if (!key || map.has(key)) continue;
+      map.set(key, getCustomerTier(b.Phone, bookings, invoices));
+    }
+    return map;
+  })();
 
   return (
     <div style={{ padding:"20px 16px", maxWidth:1400 }}>
@@ -285,12 +381,15 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
 
       <BookingModal
         booking={selected}
+        bookings={bookings}
+        invoices={invoices}
         onClose={()=>setSelected(null)}
         onConfirm={confirmBooking}
         onReject={rejectBooking}
         onCompleted={handleCompleted}
+        onNotesSaved={handleNotesSaved}
       />
-      <CustomerHistory customer={customer} bookings={bookings} onClose={()=>setCustomer(null)} />
+      <CustomerHistory customer={customer} bookings={bookings} invoices={invoices} onClose={()=>setCustomer(null)} />
 
       <div className="bk-header" style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:20 }}>
         <div>
@@ -329,12 +428,34 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
             <table className="bk-table data-table" style={{ width:"100%", minWidth:400 }}>
               <thead><tr>{["ID","Name","Phone","Service","Source","Date","Time","Status","Payment","Actions"].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
               <tbody className="list-stagger-rows">
-                {filtered.map((b,i)=>(
-                  <tr key={i} style={{ cursor:"pointer" }}
+                {filtered.map((b,i)=>{
+                  const stale = isStalePending(b);
+                  return (
+                  <tr
+                    key={i}
+                    style={{
+                      cursor: "pointer",
+                      ...(stale
+                        ? {
+                            background:
+                              t.name === "dark"
+                                ? "rgba(245,158,11,0.08)"
+                                : "rgba(245,158,11,0.07)",
+                            boxShadow: "inset 3px 0 0 #f59e0b, 0 0 18px rgba(245,158,11,0.12)",
+                          }
+                        : {}),
+                    }}
                     onClick={()=>setSelected(b)}
                   >
                     <td style={{...TD,fontFamily:"monospace",fontSize:11,color:t.textMuted}}>{b["Booking ID"]||"—"}</td>
-                    <td style={{...TD,fontWeight:600,color:t.textPrimary,cursor:"pointer"}} onClick={e=>{e.stopPropagation();setCustomer(b);}}>{b.Name}</td>
+                    <td style={{...TD,fontWeight:600,color:t.textPrimary,cursor:"pointer"}} onClick={e=>{e.stopPropagation();setCustomer(b);}}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span>{b.Name}</span>
+                        {tierByPhoneKey.get(phoneKey(b.Phone)) && (
+                          <StatusBadge status={tierByPhoneKey.get(phoneKey(b.Phone))} />
+                        )}
+                      </div>
+                    </td>
                     <td style={TD}>{formatPhone(b.Phone?.toString()||"")}</td>
                     <td style={TD}>{b.Service}</td>
                     <td style={TD}>
@@ -376,7 +497,8 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
   </div>
 </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

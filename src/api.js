@@ -88,3 +88,46 @@ export async function downloadInvoicePdf(invoiceId, filename) {
   a.remove();
   URL.revokeObjectURL(url);
 }
+
+// Audit
+export const getAuditEvents = (limit = 200) =>
+  apiFetch(`/audit-events/?limit=${encodeURIComponent(limit)}`);
+
+// Cash ledger
+export const getCashLedger = (limit = 200) =>
+  apiFetch(`/cash-ledger/?limit=${encodeURIComponent(limit)}`);
+export const createCashLedgerEntry = (entry) =>
+  apiFetch("/cash-ledger/", {
+    method: "POST",
+    body: JSON.stringify(entry),
+  });
+
+// Quick PIN
+export const getPinStatus = () => apiFetch("/auth/pin/status");
+export const setPin = (pin, password) =>
+  apiFetch("/auth/pin/set", {
+    method: "POST",
+    body: JSON.stringify({ pin, password }),
+  });
+export const clearPin = (password) =>
+  apiFetch("/auth/pin/clear", {
+    method: "POST",
+    body: JSON.stringify({ password }),
+  });
+export const verifyPin = (pin) =>
+  apiFetch("/auth/pin/verify", {
+    method: "POST",
+    body: JSON.stringify({ pin }),
+  });
+export const unlockWithPassword = (password) =>
+  apiFetch("/auth/pin/unlock-password", {
+    method: "POST",
+    body: JSON.stringify({ password }),
+  });
+
+// TEMPORARY — WhatsApp Cloud API smoke test (remove with Settings test UI)
+export const testWhatsApp = (to, templateName = "hello_world") =>
+  apiFetch("/test-whatsapp", {
+    method: "POST",
+    body: JSON.stringify({ to, template_name: templateName }),
+  });

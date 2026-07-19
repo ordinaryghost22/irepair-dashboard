@@ -30,6 +30,7 @@ export const NAV_ICONS = {
   "/": LayoutDashboard,
   "/bookings": ClipboardList,
   "/invoices": Receipt,
+  "/cash": Banknote,
   "/slots": Clock,
   "/leads": Users,
   "/waitlist": Hourglass,
@@ -70,6 +71,10 @@ export function StatIconSlots({ size = ICON_SIZE_STAT }) {
 }
 
 export function StatIconRevenue({ size = ICON_SIZE_STAT }) {
+  return <Banknote size={size} color="rgba(255,255,255,0.95)" {...strokeProps} />;
+}
+
+export function StatIconCash({ size = ICON_SIZE_STAT }) {
   return <Banknote size={size} color="rgba(255,255,255,0.95)" {...strokeProps} />;
 }
 

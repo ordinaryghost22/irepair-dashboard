@@ -1,7 +1,7 @@
 import { createPortal } from "react-dom";
 import { useTheme, cardStyle } from "../context/ThemeContext";
 
-export default function Modal({ open, onClose, children, maxWidth = 460 }) {
+export default function Modal({ open, onClose, children, maxWidth = 460, maxHeight = "90vh" }) {
   const { theme: t } = useTheme();
   if (!open) return null;
 
@@ -22,7 +22,7 @@ export default function Modal({ open, onClose, children, maxWidth = 460 }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: 20,
+        padding: 16,
       }}
     >
       <div
@@ -30,11 +30,15 @@ export default function Modal({ open, onClose, children, maxWidth = 460 }) {
         onClick={(e) => e.stopPropagation()}
         style={{
           ...cardStyle(t),
-          padding: 32,
+          padding: 0,
           width: "100%",
           maxWidth,
+          maxHeight,
           position: "relative",
           zIndex: 1,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
         }}
       >
         {children}

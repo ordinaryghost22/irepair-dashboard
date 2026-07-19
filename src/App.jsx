@@ -14,6 +14,7 @@ import Waitlist    from "./pages/Waitlist";
 import Chats       from "./pages/Chats";
 import AuditLog    from "./pages/AuditLog";
 import Analytics   from "./pages/Analytics";
+import CashLedger  from "./pages/CashLedger";
 import Security    from "./pages/Security";
 import Settings    from "./pages/Settings";
 import OwnerBot from "./components/OwnerBot";
@@ -51,6 +52,7 @@ export default function App() {
                         <Route path="/"          element={<Dashboard />}  />
                         <Route path="/bookings"  element={<Bookings />}   />
                         <Route path="/invoices"  element={<Invoices />}   />
+                        <Route path="/cash"      element={<CashLedger />} />
                         <Route path="/slots"     element={<Slots />}      />
                         <Route path="/leads"     element={<Leads />}      />
                         <Route path="/waitlist"  element={<Waitlist />}   />

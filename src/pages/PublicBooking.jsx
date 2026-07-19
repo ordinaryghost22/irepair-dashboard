@@ -59,6 +59,24 @@ const SERVICE_KEYWORDS = {
 
 const HEARD_FROM_OPTIONS = ["WhatsApp", "Instagram", "Google", "Walk-in", "Referral", "Facebook"];
 
+const UTM_SOURCE_MAP = {
+  google: "Google",
+  facebook: "Facebook",
+  instagram: "Instagram",
+};
+
+/** Read utm_source from the URL and map known values to dropdown labels. */
+function captureUtmSource() {
+  try {
+    const raw = new URLSearchParams(window.location.search).get("utm_source");
+    if (!raw || !raw.trim()) return null;
+    const trimmed = raw.trim();
+    return UTM_SOURCE_MAP[trimmed.toLowerCase()] || trimmed;
+  } catch {
+    return null;
+  }
+}
+
 function suggestService(issueText) {
   if (!issueText) return null;
   const text = issueText.toLowerCase();
@@ -206,9 +224,10 @@ export default function PublicBooking() {
   const [loadingSlots, setLoadingSlots] = useState(true);
   const [slotsError, setSlotsError] = useState("");
 
+  const [utmSource] = useState(() => captureUtmSource());
   const [form, setForm] = useState({
     name: "", phone: "", email: "", device: "", deviceTier: null, imei: "",
-    issue: "", contactPref: "WhatsApp", heardFrom: "", backupConfirmed: false, passcodeAtDropoff: false,
+    issue: "", contactPref: "WhatsApp", heardFrom: utmSource || "", backupConfirmed: false, passcodeAtDropoff: false,
     service: "", date: "", time: "", notes: "", photo: null, photoPreview: null,
   });
   const [submitting, setSubmitting] = useState(false);
@@ -216,6 +235,7 @@ export default function PublicBooking() {
   const [done, setDone] = useState(false);
   const [suggestedService, setSuggestedService] = useState(null);
   const [showOptional, setShowOptional] = useState(false);
+  const utmLocked = Boolean(utmSource);
 
   useEffect(() => {
     async function loadSlots() {
@@ -317,10 +337,20 @@ export default function PublicBooking() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(booking),
       });
-      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const detail = typeof err.detail === "string" ? err.detail : null;
+        if (res.status === 409) {
+          throw new Error(detail || "This slot is no longer available, please choose another.");
+        }
+        if (res.status === 400) {
+          throw new Error(detail || "Please check your phone number and try again.");
+        }
+        throw new Error(detail || `Server returned ${res.status}`);
+      }
       setDone(true);
-    } catch {
-      setError("Something went wrong sending your request. Please try again, or message us directly.");
+    } catch (err) {
+      setError(err.message || "Something went wrong sending your request. Please try again, or message us directly.");
     } finally {
       setSubmitting(false);
     }
@@ -493,7 +523,7 @@ export default function PublicBooking() {
                 display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer",
                 padding: "8px 0", fontSize: 12.5, fontWeight: 600, color: t.accent,
               }}>
-                {showOptional ? "− Hide" : "+ Add"} optional details (photo, IMEI, how you found us)
+                {showOptional ? "− Hide" : "+ Add"} optional details (photo, IMEI{utmLocked ? "" : ", how you found us"})
               </button>
 
               {showOptional && (
@@ -510,15 +540,17 @@ export default function PublicBooking() {
                       <input type="file" accept="image/*" onChange={handlePhoto} style={{ display: "none" }} />
                     </label>
                   </div>
-                  <div style={{ marginBottom: 16 }}>
+                  <div style={{ marginBottom: utmLocked ? 0 : 16 }}>
                     <label style={label}>IMEI / Serial</label>
                     <input style={inputStyle} {...focusHandlers} value={form.imei} onChange={e => handleChange("imei", e.target.value)} placeholder="Found in Settings → About" />
                   </div>
-                  <div>
-                    <label style={label}>Heard about us from?</label>
-                    <CustomSelect t={t} dark={dark} style={inputStyle} value={form.heardFrom} onChange={v => handleChange("heardFrom", v)} placeholder="Select…"
-                      options={HEARD_FROM_OPTIONS.map(o => ({ value: o, label: o }))} />
-                  </div>
+                  {!utmLocked && (
+                    <div>
+                      <label style={label}>Heard about us from?</label>
+                      <CustomSelect t={t} dark={dark} style={inputStyle} value={form.heardFrom} onChange={v => handleChange("heardFrom", v)} placeholder="Select…"
+                        options={HEARD_FROM_OPTIONS.map(o => ({ value: o, label: o }))} />
+                    </div>
+                  )}
                 </div>
               )}
             </>

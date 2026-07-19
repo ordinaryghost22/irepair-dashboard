@@ -5,6 +5,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 const PAGES = [
   "/",
   "/bookings",
+  "/invoices",
+  "/cash",
   "/slots",
   "/leads",
   "/waitlist",

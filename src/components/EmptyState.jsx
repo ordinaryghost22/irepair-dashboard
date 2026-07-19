@@ -1,19 +1,19 @@
 import { useTheme, secondaryBtnStyle, cardStyle } from "../context/ThemeContext";
 
-export default function EmptyState({ icon = "◈", title, subtitle, action, onAction }) {
+export default function EmptyState({ icon = "◈", title, subtitle, action, onAction, compact = false }) {
   const { theme: t } = useTheme();
   return (
     <div
       style={{
         ...cardStyle(t),
-        padding: "56px 24px",
+        padding: compact ? "28px 20px" : "56px 24px",
         textAlign: "center",
       }}
     >
       <div
         style={{
-          fontSize: 22,
-          marginBottom: 12,
+          fontSize: compact ? 18 : 22,
+          marginBottom: compact ? 8 : 12,
           color: t.textMuted,
           lineHeight: 1,
           opacity: 0.85,

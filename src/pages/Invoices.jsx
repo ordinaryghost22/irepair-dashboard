@@ -4,6 +4,7 @@ import { useToast } from "../context/ToastContext";
 import EmptyState from "../components/EmptyState";
 import Skeleton from "../components/Skeleton";
 import { formatDate } from "../utils/format";
+import { exportToCSV } from "../utils/export";
 import {
   getInvoices,
   updateInvoiceStatus,
@@ -138,6 +139,25 @@ export default function Invoices() {
             {invoices.length} total · {invoices.filter((i) => i.status === "unpaid").length} unpaid
           </p>
         </div>
+        <button
+          className="ui-interactive"
+          onClick={() => {
+            const rows = filtered.map((inv) => ({
+              "Invoice #": inv.invoice_number,
+              Customer: inv.customer_name || inv.Name || "",
+              Service: inv.service || inv.Service || "",
+              Device: inv.device || inv.Device || "",
+              Amount: inv.amount,
+              Date: inv.created_at,
+              Status: inv.status,
+              "Booking ID": inv.booking_id || "",
+            }));
+            exportToCSV(rows, "invoices.csv");
+          }}
+          style={{ ...secondaryBtnStyle(t), padding: "9px 16px", fontSize: 13, whiteSpace: "nowrap" }}
+        >
+          Export
+        </button>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 20 }}>

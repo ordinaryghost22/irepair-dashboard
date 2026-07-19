@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef } f
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "./ThemeContext";
+import { getPinStatus } from "../api";
+import PinLockOverlay from "../components/PinLockOverlay";
 
 const SecurityContext = createContext();
 
@@ -9,20 +11,30 @@ const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 min
 const WARN_BEFORE     = 2  * 60 * 1000; // warn 2 min before
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION   = 15 * 60 * 1000; // 15 min lockout
+const PIN_SET_KEY = "irepair_pin_set";
 
 export function SecurityProvider({ children }) {
   const { theme: t } = useTheme();
   const navigate = useNavigate();
   const [showWarning,   setShowWarning]   = useState(false);
   const [countdown,     setCountdown]     = useState(120);
+  const [locked,        setLocked]        = useState(false);
+  const [pinConfigured, setPinConfigured] = useState(() => {
+    try { return localStorage.getItem(PIN_SET_KEY) === "1"; } catch { return false; }
+  });
   const [securityLog,   setSecurityLog]   = useState(() => {
     try { return JSON.parse(localStorage.getItem("irepair_seclog") || "[]"); } catch { return []; }
   });
 
-  const timeoutRef  = useRef(null);
-  const warnRef     = useRef(null);
-  const countRef    = useRef(null);
+  const timeoutRef   = useRef(null);
+  const warnRef      = useRef(null);
+  const countRef     = useRef(null);
   const lastActivity = useRef(Date.now());
+  const lockedRef    = useRef(false);
+  const pinConfiguredRef = useRef(pinConfigured);
+
+  useEffect(() => { lockedRef.current = locked; }, [locked]);
+  useEffect(() => { pinConfiguredRef.current = pinConfigured; }, [pinConfigured]);
 
   const addLog = useCallback((event, detail = "") => {
     const entry = {
@@ -37,6 +49,23 @@ export function SecurityProvider({ children }) {
     });
   }, []);
 
+  const setPinEnabled = useCallback((enabled) => {
+    setPinConfigured(Boolean(enabled));
+    try {
+      localStorage.setItem(PIN_SET_KEY, enabled ? "1" : "0");
+    } catch { /* ignore */ }
+  }, []);
+
+  const refreshPinStatus = useCallback(async () => {
+    if (!localStorage.getItem("auth") || !localStorage.getItem("irepair_token")) return;
+    try {
+      const data = await getPinStatus();
+      setPinEnabled(Boolean(data?.pin_set));
+    } catch {
+      // Keep cached value on failure
+    }
+  }, [setPinEnabled]);
+
   const logout = useCallback((reason = "Manual logout") => {
     addLog("Logout", reason);
     localStorage.removeItem("auth");
@@ -45,10 +74,38 @@ export function SecurityProvider({ children }) {
     clearTimeout(warnRef.current);
     clearInterval(countRef.current);
     setShowWarning(false);
+    setLocked(false);
+    lockedRef.current = false;
     navigate("/login");
   }, [addLog, navigate]);
 
+  const softLock = useCallback((reason = "Session idle") => {
+    if (lockedRef.current) return;
+    addLog("Screen locked", reason);
+    clearTimeout(timeoutRef.current);
+    clearTimeout(warnRef.current);
+    clearInterval(countRef.current);
+    setShowWarning(false);
+    setLocked(true);
+    lockedRef.current = true;
+  }, [addLog]);
+
+  const unlockSession = useCallback(() => {
+    addLog("Screen unlocked", "Quick PIN / password");
+    setLocked(false);
+    lockedRef.current = false;
+  }, [addLog]);
+
+  const expireSession = useCallback(() => {
+    if (pinConfiguredRef.current) {
+      softLock("Session timeout");
+    } else {
+      logout("Session timeout");
+    }
+  }, [softLock, logout]);
+
   const resetTimer = useCallback(() => {
+    if (lockedRef.current) return;
     lastActivity.current = Date.now();
     setShowWarning(false);
     clearTimeout(timeoutRef.current);
@@ -56,13 +113,14 @@ export function SecurityProvider({ children }) {
     clearInterval(countRef.current);
 
     warnRef.current = setTimeout(() => {
+      if (lockedRef.current) return;
       setCountdown(WARN_BEFORE / 1000);
       setShowWarning(true);
       countRef.current = setInterval(() => {
         setCountdown(prev => {
           if (prev <= 1) {
             clearInterval(countRef.current);
-            logout("Session timeout");
+            expireSession();
             return 0;
           }
           return prev - 1;
@@ -71,17 +129,28 @@ export function SecurityProvider({ children }) {
     }, SESSION_TIMEOUT - WARN_BEFORE);
 
     timeoutRef.current = setTimeout(() => {
-      logout("Session timeout");
+      expireSession();
     }, SESSION_TIMEOUT);
-  }, [logout]);
+  }, [expireSession]);
+
+  // After unlock, restart idle timers
+  useEffect(() => {
+    if (!locked && localStorage.getItem("auth")) {
+      resetTimer();
+    }
+  }, [locked, resetTimer]);
 
   // Track user activity
   useEffect(() => {
     if (!localStorage.getItem("auth")) return;
-    const events = ["mousedown","keydown","scroll","touchstart","click"];
-    const handler = () => resetTimer();
+    const events = ["mousedown", "keydown", "scroll", "touchstart", "click"];
+    const handler = () => {
+      if (lockedRef.current) return;
+      resetTimer();
+    };
     events.forEach(e => window.addEventListener(e, handler, { passive: true }));
     resetTimer();
+    refreshPinStatus();
     addLog("Login", "Session started");
     return () => {
       events.forEach(e => window.removeEventListener(e, handler));
@@ -89,7 +158,7 @@ export function SecurityProvider({ children }) {
       clearTimeout(warnRef.current);
       clearInterval(countRef.current);
     };
-  }, [resetTimer, addLog]);
+  }, [resetTimer, addLog, refreshPinStatus]);
 
   // ── Login attempt tracker (exported for Login page) ────────────────────────
   const checkLoginAttempt = useCallback((username) => {
@@ -109,7 +178,8 @@ export function SecurityProvider({ children }) {
     localStorage.removeItem("irepair_attempts");
     localStorage.setItem("irepair_session", JSON.stringify({ user: username, start: Date.now() }));
     addLog("Login Success", `User: ${username}`);
-  }, [addLog]);
+    refreshPinStatus();
+  }, [addLog, refreshPinStatus]);
 
   const recordLoginFail = useCallback((username) => {
     const key = "irepair_attempts";
@@ -127,12 +197,36 @@ export function SecurityProvider({ children }) {
     return MAX_LOGIN_ATTEMPTS - data.count;
   };
 
+  const warnUsesSoftLock = pinConfigured;
+
   return (
-    <SecurityContext.Provider value={{ logout, securityLog, checkLoginAttempt, recordLoginSuccess, recordLoginFail, remainingAttempts, addLog }}>
+    <SecurityContext.Provider value={{
+      logout,
+      softLock,
+      unlockSession,
+      locked,
+      pinConfigured,
+      setPinEnabled,
+      refreshPinStatus,
+      securityLog,
+      checkLoginAttempt,
+      recordLoginSuccess,
+      recordLoginFail,
+      remainingAttempts,
+      addLog,
+    }}>
       {children}
 
+      {locked && createPortal(
+        <PinLockOverlay
+          onUnlocked={unlockSession}
+          onFullLogout={() => logout("Signed out from lock screen")}
+        />,
+        document.body
+      )}
+
       {/* ── SESSION TIMEOUT WARNING MODAL ── */}
-      {showWarning && createPortal(
+      {showWarning && !locked && createPortal(
         <div
           className="modal-backdrop"
           style={{
@@ -167,14 +261,20 @@ export function SecurityProvider({ children }) {
             }}
           >
             <div style={{ fontSize:40, marginBottom:16, opacity:0.6 }}>⏱</div>
-            <h2 style={{ color:t.textPrimary, fontWeight:700, fontSize:20, marginBottom:8 }}>Session Expiring</h2>
-            <p style={{ color:t.textSecondary, fontSize:14, marginBottom:24 }}>You will be logged out in</p>
+            <h2 style={{ color:t.textPrimary, fontWeight:700, fontSize:20, marginBottom:8 }}>
+              {warnUsesSoftLock ? "Screen Will Lock" : "Session Expiring"}
+            </h2>
+            <p style={{ color:t.textSecondary, fontSize:14, marginBottom:24 }}>
+              {warnUsesSoftLock
+                ? "Your screen will lock in"
+                : "You will be logged out in"}
+            </p>
             <div style={{ fontSize:52, fontWeight:700, color: countdown < 30 ? t.textPrimary : "var(--accent)", marginBottom:24, fontVariantNumeric:"tabular-nums" }}>
               {Math.floor(countdown/60)}:{String(countdown%60).padStart(2,"0")}
             </div>
             <div style={{ display:"flex", gap:12 }}>
               <button className="ui-interactive" onClick={() => { resetTimer(); }} style={{ flex:1, padding:"13px", borderRadius:10, border:"none", background:t.btnPrimaryBg, color:t.btnPrimaryColor, boxShadow:t.btnPrimaryShadow, fontWeight:700, fontSize:14, cursor:"pointer" }}>
-                Stay Logged In
+                Stay Active
               </button>
               <button className="ui-interactive" onClick={() => logout("User chose to logout")} style={{ flex:1, padding:"13px", borderRadius:10, border:`1px solid rgba(255,255,255,0.12)`, background:"transparent", color:t.textSecondary, fontWeight:600, fontSize:14, cursor:"pointer" }}>
                 Logout

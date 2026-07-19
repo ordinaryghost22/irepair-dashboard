@@ -1,7 +1,10 @@
 import { createPortal } from "react-dom";
 import { useTheme } from "../context/ThemeContext";
+import { phonesMatch } from "../utils/format";
+import { getCustomerTier } from "../utils/customerTier";
+import StatusBadge from "./StatusBadge";
 
-export default function CustomerHistory({ customer, bookings, onClose }) {
+export default function CustomerHistory({ customer, bookings, invoices = [], onClose }) {
   const { theme: t } = useTheme();
   if (!customer) return null;
 
@@ -10,10 +13,12 @@ export default function CustomerHistory({ customer, bookings, onClose }) {
     "Water Damage":8000,"Charging Port":3000,"Camera Repair":4000
   };
 
-  const history = bookings.filter(b => b.Phone === customer.Phone);
+  // Match across legacy formats (0300…) and normalized (+92…) phones
+  const history = bookings.filter(b => phonesMatch(b.Phone, customer.Phone));
   const totalSpent = history.filter(b => b.Status === "Confirmed").reduce((s,b) => s+(SERVICE_PRICES[b.Service]||0), 0);
   const firstVisit = history.length ? history[history.length-1].Date : "—";
   const lastVisit  = history.length ? history[0].Date : "—";
+  const tier = getCustomerTier(customer.Phone, bookings, invoices);
 
   return createPortal(
     <div
@@ -61,7 +66,10 @@ export default function CustomerHistory({ customer, bookings, onClose }) {
               {customer.Name?.charAt(0)}
             </div>
             <div>
-              <div style={{ fontSize:18, fontWeight:800, color:t.textPrimary }}>{customer.Name}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ fontSize:18, fontWeight:800, color:t.textPrimary }}>{customer.Name}</div>
+                {tier && <StatusBadge status={tier} />}
+              </div>
               <div style={{ fontSize:13, color:t.textMuted, marginTop:2 }}>{customer.Phone}</div>
             </div>
           </div>

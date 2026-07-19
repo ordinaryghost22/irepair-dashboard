@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../store/useStore";
 import { useTheme, cardStyle } from "../context/ThemeContext";
@@ -7,8 +7,10 @@ import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
 import { exportToCSV } from "../utils/export";
 import { formatDate, inRange } from "../utils/format";
+import { isStalePending } from "../utils/sla";
 import { DATE_RANGES, SERVICE_PRICES } from "../constants";
 import HourglassLoader from "../components/HourglassLoader";
+import { getInvoices } from "../api";
 import {
   StatIconBookings,
   StatIconLeads,
@@ -23,16 +25,33 @@ const STATUS_COLORS = {
 };
 const PLACEHOLDER = "rgba(255,255,255,0.08)";
 const ACCENT = "#8b5cf6";
+const AMBER = "#f59e0b";
+
+const SUMMARY_COPY = {
+  Today: { title: "Today's Summary", subtitle: "Live snapshot for today", bookings: "Bookings today" },
+  "This Week": { title: "This Week's Summary", subtitle: "Live snapshot for this week", bookings: "Bookings this week" },
+  "This Month": { title: "This Month's Summary", subtitle: "Live snapshot for this month", bookings: "Bookings this month" },
+  "All Time": { title: "All Time Summary", subtitle: "Live snapshot for all time", bookings: "Bookings" },
+};
 
 export default function Dashboard() {
   const bookings = useStore((s) => s.bookings);
   const slots = useStore((s) => s.slots);
   const leads = useStore((s) => s.leads);
+  const cashLedger = useStore((s) => s.cashLedger);
+  const storeInvoices = useStore((s) => s.invoices);
   const loading = useStore((s) => s.loading);
   const { theme: t } = useTheme();
   const navigate = useNavigate();
 
   const [range, setRange] = useState("All Time");
+  const [invoices, setInvoices] = useState([]);
+
+  useEffect(() => {
+    getInvoices()
+      .then((data) => setInvoices(Array.isArray(data) ? data : []))
+      .catch(() => setInvoices([]));
+  }, []);
 
   if (loading) return <HourglassLoader />;
 
@@ -44,6 +63,21 @@ export default function Dashboard() {
   const revenue = filtered
     .filter((b) => b.Status === "Confirmed")
     .reduce((s, b) => s + (SERVICE_PRICES[b.Service] || 0), 0);
+
+  const summaryBookings = filtered.length;
+  const unpaidInvoices = invoices.filter(
+    (i) => i.status === "unpaid" && inRange(i.created_at, range)
+  ).length;
+  const summaryLeads = leads.filter((l) => inRange(l.created_at, range)).length;
+  const summaryCopy = SUMMARY_COPY[range] || SUMMARY_COPY["All Time"];
+
+  const needsAttention = bookings.filter(isStalePending).length;
+
+  // All-time cash on hand for compact summary (ledger + paid invoices)
+  const invForCash = (storeInvoices?.length ? storeInvoices : invoices) || [];
+  const cashOnHand =
+    (cashLedger || []).reduce((s, e) => s + Number(e.amount || 0), 0) +
+    invForCash.filter((i) => i.status === "paid").reduce((s, i) => s + Number(i.amount || 0), 0);
 
   const statusCounts = [
     { name: "Confirmed", value: confirmed, color: STATUS_COLORS.Confirmed },
@@ -149,6 +183,72 @@ export default function Dashboard() {
             </button>
           ))}
         </div>
+      </div>
+
+      {needsAttention > 0 && (
+        <button
+          type="button"
+          className="ui-interactive"
+          onClick={() => navigate("/bookings")}
+          style={{
+            ...panel,
+            width: "100%",
+            textAlign: "left",
+            marginBottom: 16,
+            padding: "14px 18px",
+            cursor: "pointer",
+            border: "1px solid rgba(245,158,11,0.35)",
+            boxShadow: `${t.cardShadow}, 0 0 24px rgba(245,158,11,0.18)`,
+            background:
+              t.name === "dark"
+                ? "linear-gradient(90deg, rgba(245,158,11,0.14), rgba(245,158,11,0.04))"
+                : "linear-gradient(90deg, rgba(245,158,11,0.12), rgba(255,255,255,0.6))",
+          }}
+        >
+          <div style={{ fontSize: 14, fontWeight: 700, color: AMBER }}>
+            {needsAttention} booking{needsAttention === 1 ? "" : "s"} need attention
+          </div>
+          <div style={{ fontSize: 12, color: t.textMuted, marginTop: 3 }}>
+            Pending for 4+ hours — tap to review
+          </div>
+        </button>
+      )}
+
+      <div
+        style={{
+          ...panel,
+          padding: "18px 20px",
+          marginBottom: 20,
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+          gap: 16,
+          alignItems: "center",
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: t.textPrimary, marginBottom: 2 }}>{summaryCopy.title}</div>
+          <div style={{ fontSize: 12, color: t.textMuted }}>{summaryCopy.subtitle}</div>
+        </div>
+        <button type="button" className="ui-interactive" onClick={() => navigate("/bookings")} style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, letterSpacing: -0.4 }}>{summaryBookings}</div>
+          <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}>{summaryCopy.bookings}</div>
+        </button>
+        <button type="button" className="ui-interactive" onClick={() => navigate("/invoices")} style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, letterSpacing: -0.4 }}>{unpaidInvoices}</div>
+          <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}>Unpaid invoices</div>
+        </button>
+        <button type="button" className="ui-interactive" onClick={() => navigate("/leads")} style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, letterSpacing: -0.4 }}>{summaryLeads}</div>
+          <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}>Leads</div>
+        </button>
+        <button type="button" className="ui-interactive" onClick={() => navigate("/cash")} style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, letterSpacing: -0.4, fontVariantNumeric: "tabular-nums" }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: t.textSecondary, marginRight: 4 }}>Rs</span>
+            {cashOnHand.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </div>
+          <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}>Cash on hand</div>
+          <div style={{ fontSize: 11, color: t.accent, fontWeight: 600, marginTop: 4 }}>Log entry →</div>
+        </button>
       </div>
 
       <div className="dash-statgrid" style={{ display: "grid", gap: 12, marginBottom: 20 }}>
