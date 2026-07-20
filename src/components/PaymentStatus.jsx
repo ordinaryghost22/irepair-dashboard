@@ -82,7 +82,6 @@ export function PaymentStatusCycler({ status, bookingId, onChange, loading }) {
         }}
       />
       {current}
-      <span style={{ fontSize: 10, opacity: 0.6, marginLeft: 2 }}>↻</span>
     </button>
   );
 }

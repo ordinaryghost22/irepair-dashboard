@@ -19,6 +19,7 @@ import Security    from "./pages/Security";
 import Settings    from "./pages/Settings";
 import OwnerBot from "./components/OwnerBot";
 import PublicBooking from "./pages/PublicBooking";
+import ClientDemo from "./pages/ClientDemo";
 
 function PrivateRoute({ children }) {
   return localStorage.getItem("auth") ? children : <Navigate to="/login" />;
@@ -31,7 +32,7 @@ function AppInit({ children }) {
 
 function OwnerBotGate() {
   const { pathname } = useLocation();
-  if (pathname === "/login" || pathname === "/book") return null;
+  if (pathname === "/login" || pathname === "/book" || pathname === "/demo") return null;
   return <OwnerBot />;
 }
 
@@ -44,6 +45,7 @@ export default function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/book"  element={<PublicBooking />} />
+              <Route path="/demo"  element={<ClientDemo />} />
               <Route path="/*" element={
                 <PrivateRoute>
                   <AppInit>

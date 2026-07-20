@@ -14,12 +14,38 @@ export function timeAgo(dateStr) {
   if (!dateStr) return "—";
   const d = new Date(dateStr);
   if (isNaN(d)) return dateStr;
-  const s = Math.floor((Date.now() - d.getTime()) / 1000);
-  if (s < 60)     return "just now";
-  if (s < 3600)   return `${Math.floor(s/60)}m ago`;
-  if (s < 86400)  return `${Math.floor(s/3600)}h ago`;
-  if (s < 604800) return `${Math.floor(s/86400)}d ago`;
-  return formatDate(dateStr);
+  const now = new Date();
+  const s = Math.floor((now.getTime() - d.getTime()) / 1000);
+  if (s < 0) return "just now";
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startMsg = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dayDiff = Math.round((startToday - startMsg) / 86400000);
+  if (dayDiff === 1) return "Yesterday";
+  if (dayDiff > 1 && dayDiff < 7) {
+    return d.toLocaleDateString("en-US", { weekday: "short" }); // Mon, Tue…
+  }
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }); // Jul 18
+}
+
+/** Date divider label for inbox threads: Today / Yesterday / Jul 18 */
+export function inboxDateLabel(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d)) return null;
+  const now = new Date();
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startMsg = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dayDiff = Math.round((startToday - startMsg) / 86400000);
+  if (dayDiff === 0) return "Today";
+  if (dayDiff === 1) return "Yesterday";
+  if (dayDiff > 1 && dayDiff < 7) {
+    return d.toLocaleDateString("en-US", { weekday: "long" });
+  }
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 export function formatPhone(phone) {
   if (!phone) return "—";
@@ -50,7 +76,15 @@ export function truncate(text, max=50) {
 }
 export function getInitials(name) {
   if (!name) return "?";
-  return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+  // Prefer alphabetic starts only — avoids "I1" from "iPhone 16" / device labels
+  const letters = [];
+  for (const word of String(name).trim().split(/\s+/)) {
+    if (!word) continue;
+    const m = word.match(/[A-Za-z\u00C0-\u024F\u0600-\u06FF]/);
+    if (m) letters.push(m[0].toUpperCase());
+    if (letters.length >= 2) break;
+  }
+  return letters.length ? letters.join("") : "?";
 }
 export function whatsappLink(phone) {
   if (!phone) return "#";

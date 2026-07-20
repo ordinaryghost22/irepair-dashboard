@@ -53,6 +53,8 @@ export const updateSlot = (id, data) => apiFetch(`/slots/${id}`, { method: "PUT"
 // Leads
 export const getLeads = () => apiFetch("/leads/");
 export const createLead = (lead) => apiFetch("/leads/", { method: "POST", body: JSON.stringify(lead) });
+export const deleteLead = (id) =>
+  apiFetch(`/leads/${encodeURIComponent(id)}`, { method: "DELETE" });
 
 // Chat
 export const getChatSessions = (limit = 100) =>
@@ -72,13 +74,18 @@ export const updateInvoiceStatus = (id, status) =>
     method: "PUT",
     body: JSON.stringify({ status }),
   });
-export async function downloadInvoicePdf(invoiceId, filename) {
+
+async function fetchInvoicePdfBlob(invoiceId) {
   const token = getToken();
   const res = await fetch(`${API_URL}/invoices/${invoiceId}/pdf`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!res.ok) throw new Error(`PDF download failed (${res.status})`);
-  const blob = await res.blob();
+  return res.blob();
+}
+
+export async function downloadInvoicePdf(invoiceId, filename) {
+  const blob = await fetchInvoicePdfBlob(invoiceId);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -87,6 +94,19 @@ export async function downloadInvoicePdf(invoiceId, filename) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+/** Open invoice PDF in a new tab (preview) — same blob source as download. */
+export async function openInvoicePdf(invoiceId) {
+  const blob = await fetchInvoicePdfBlob(invoiceId);
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, "_blank", "noopener,noreferrer");
+  if (!win) {
+    URL.revokeObjectURL(url);
+    throw new Error("Popup blocked — allow popups to preview invoices");
+  }
+  // Revoke after the tab has had time to load the blob
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 // Audit
@@ -130,4 +150,24 @@ export const testWhatsApp = (to, templateName = "hello_world") =>
   apiFetch("/test-whatsapp", {
     method: "POST",
     body: JSON.stringify({ to, template_name: templateName }),
+  });
+
+/** Inbox reply — free-form WhatsApp text (requires open customer-care window). */
+export const sendWhatsAppText = (to, text) =>
+  apiFetch("/whatsapp/send", {
+    method: "POST",
+    body: JSON.stringify({ to, text }),
+  });
+
+// WhatsApp integration (Connect from Inbox)
+export const getWhatsAppIntegrationStatus = () =>
+  apiFetch("/integrations/whatsapp/status");
+
+export const connectWhatsApp = (phoneNumberId, accessToken) =>
+  apiFetch("/integrations/whatsapp/connect", {
+    method: "POST",
+    body: JSON.stringify({
+      phone_number_id: phoneNumberId,
+      access_token: accessToken,
+    }),
   });

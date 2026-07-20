@@ -3,6 +3,7 @@ import { useTheme, primaryBtnStyle, cardStyle, EASE, DURATION } from "../context
 import { useToast } from "../context/ToastContext";
 import { useSecurity } from "../context/SecurityContext";
 import { SERVICE_PRICES } from "../constants";
+import { BUSINESS_NAME } from "../constants/brand";
 import { setPin, clearPin, testWhatsApp } from "../api";
 
 const SECTION_ICONS = {
@@ -264,9 +265,9 @@ export default function Settings() {
       <div style={section}>
         <SectionTitle icon={SECTION_ICONS.shop} label="Shop Information" t={t} />
         <div className="settings-grid" style={{ display: "grid", gap: 16 }}>
-          {field("Shop Name", "iRepair Shop")}
+          {field("Shop Name", BUSINESS_NAME)}
           {field("Phone", "+92 300 0000000")}
-          {field("Email", "owner@irepair.com", "email")}
+          {field("Email", "owner@ultimatephonerepair.com", "email")}
           {field("Address", "Lahore, Pakistan")}
           {field("City", "Lahore")}
           {field("Opening Hours", "10:00 AM – 8:00 PM")}

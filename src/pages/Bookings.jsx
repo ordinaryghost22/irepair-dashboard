@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { Check, X, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useTheme, primaryBtnStyle, secondaryBtnStyle } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
 import Skeleton from "../components/Skeleton";
 import Modal from "../components/Modal";
+import ConfirmModal from "../components/ConfirmModal";
 import StatusBadge from "../components/StatusBadge";
 import EmptyState from "../components/EmptyState";
 import CustomerHistory from "../components/CustomerHistory";
@@ -13,11 +15,313 @@ import { exportToCSV } from "../utils/export";
 import { formatDate, formatPhone, whatsappLink, phoneKey } from "../utils/format";
 import { isStalePending } from "../utils/sla";
 import { getCustomerTier } from "../utils/customerTier";
-import BookingManager from "../components/BookingManager";
 import { PaymentStatCards, PaymentStatusCycler } from "../components/PaymentStatus";
 import { usePaymentStatus } from "../hooks/usePaymentStatus";
 import { completeBookingWithInvoice, updateBooking } from "../api";
 
+/** CUST-8E942B6F → #8E942B */
+function shortBookingId(id) {
+  if (!id) return "—";
+  const s = String(id).trim();
+  const hex = s.match(/([A-Fa-f0-9]{6,})(?!.*[A-Fa-f0-9])/);
+  if (hex) return `#${hex[1].slice(0, 6).toUpperCase()}`;
+  const cleaned = s.replace(/^(CUST|BK)[-_]?/i, "");
+  return `#${cleaned.slice(-6).toUpperCase()}`;
+}
+
+const ADD_EMPTY = {
+  name: "",
+  phone: "",
+  device: "",
+  issue: "",
+  date: "",
+  time: "",
+  paymentStatus: "Unpaid",
+  notes: "",
+};
+
+function AddBookingModal({ open, onClose, onSaved }) {
+  const { theme: t } = useTheme();
+  const { showToast } = useToast();
+  const addBooking = useStore((s) => s.addBooking);
+  const [form, setForm] = useState(ADD_EMPTY);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setForm(ADD_EMPTY);
+    setError("");
+    setSaving(false);
+  }, [open]);
+
+  function handleChange(field, value) {
+    setForm((f) => ({ ...f, [field]: value }));
+  }
+
+  async function handleSave() {
+    const required = ["name", "phone", "device", "issue", "date", "time"];
+    const missing = required.filter((f) => !form[f]?.trim());
+    if (missing.length) {
+      setError(`Please fill in: ${missing.join(", ")}`);
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await addBooking({ ...form });
+      showToast("Booking added");
+      onSaved?.();
+      onClose?.();
+    } catch (err) {
+      setError(err.message || "Failed to add booking");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputStyle = {
+    width: "100%",
+    border: `1px solid ${t.border}`,
+    borderRadius: 10,
+    padding: "8px 12px",
+    fontSize: 13,
+    background: t.inputBg,
+    color: t.textPrimary,
+    outline: "none",
+    boxSizing: "border-box",
+  };
+
+  return (
+    <Modal open={open} onClose={() => !saving && onClose?.()} maxWidth={500} maxHeight="90vh">
+      <div style={{ padding: 24 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: t.textPrimary }}>Add booking</h2>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => !saving && onClose?.()}
+            style={{
+              background: t.cardBg2,
+              border: `1px solid ${t.border}`,
+              borderRadius: 10,
+              width: 34,
+              height: 34,
+              cursor: saving ? "default" : "pointer",
+              fontSize: 18,
+              color: t.textSecondary,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <AddField label="Customer name *" span={2} t={t}>
+            <input style={inputStyle} value={form.name} onChange={(e) => handleChange("name", e.target.value)} placeholder="Ali Hassan" />
+          </AddField>
+          <AddField label="Phone *" t={t}>
+            <input style={inputStyle} value={form.phone} onChange={(e) => handleChange("phone", e.target.value)} placeholder="0300-1234567" />
+          </AddField>
+          <AddField label="Payment status" t={t}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {["Unpaid", "Paid", "Onsite"].map((status) => {
+                const active = form.paymentStatus === status;
+                return (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => handleChange("paymentStatus", status)}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      border: `1px solid ${active ? "rgba(139,92,246,0.45)" : t.border}`,
+                      background: active
+                        ? "rgba(139,92,246,0.16)"
+                        : t.inputBg,
+                      color: active ? t.textPrimary : t.textSecondary,
+                    }}
+                  >
+                    {status}
+                  </button>
+                );
+              })}
+            </div>
+          </AddField>
+          <AddField label="Device *" span={2} t={t}>
+            <input style={inputStyle} value={form.device} onChange={(e) => handleChange("device", e.target.value)} placeholder="iPhone 14 Pro" />
+          </AddField>
+          <AddField label="Issue *" span={2} t={t}>
+            <input style={inputStyle} value={form.issue} onChange={(e) => handleChange("issue", e.target.value)} placeholder="Screen replacement" />
+          </AddField>
+          <AddField label="Date *" t={t}>
+            <input style={inputStyle} type="date" value={form.date} onChange={(e) => handleChange("date", e.target.value)} />
+          </AddField>
+          <AddField label="Time *" t={t}>
+            <input style={inputStyle} type="time" value={form.time} onChange={(e) => handleChange("time", e.target.value)} />
+          </AddField>
+          <AddField label="Notes" span={2} t={t}>
+            <textarea
+              style={{ ...inputStyle, resize: "vertical" }}
+              value={form.notes}
+              onChange={(e) => handleChange("notes", e.target.value)}
+              placeholder="Any extra details…"
+              rows={2}
+            />
+          </AddField>
+        </div>
+
+        {error && (
+          <div
+            style={{
+              marginTop: 12,
+              padding: "10px 14px",
+              background: "rgba(239,68,68,0.1)",
+              color: "#fca5a5",
+              borderRadius: 10,
+              fontSize: 13,
+              border: "1px solid rgba(239,68,68,0.3)",
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}>
+          <button
+            type="button"
+            className="ui-interactive"
+            disabled={saving}
+            onClick={() => !saving && onClose?.()}
+            style={{ ...secondaryBtnStyle(t), padding: "9px 18px", fontSize: 13 }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="ui-interactive"
+            onClick={handleSave}
+            disabled={saving}
+            style={{
+              ...primaryBtnStyle(t),
+              padding: "9px 22px",
+              fontSize: 13,
+              opacity: saving ? 0.7 : 1,
+              cursor: saving ? "wait" : "pointer",
+            }}
+          >
+            {saving ? "Saving…" : "Add booking"}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function AddField({ label, children, span = 1, t }) {
+  return (
+    <div style={{ gridColumn: span > 1 ? `span ${span}` : undefined }}>
+      <label
+        style={{
+          display: "block",
+          fontSize: 12,
+          fontWeight: 700,
+          color: t.textMuted,
+          marginBottom: 6,
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+        }}
+      >
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function RowMoreMenu({ bookingId, onDelete }) {
+  const { theme: t } = useTheme();
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        type="button"
+        className="bk-icon-btn"
+        title="More actions"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+      >
+        <MoreHorizontal size={16} strokeWidth={2} />
+      </button>
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            right: 0,
+            top: "100%",
+            marginTop: 4,
+            minWidth: 140,
+            padding: 4,
+            borderRadius: 10,
+            background: t.cardBg,
+            border: `1px solid ${t.border}`,
+            boxShadow: t.cardShadow,
+            zIndex: 20,
+          }}
+        >
+          <button
+            type="button"
+            className="ui-interactive"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(false);
+              onDelete?.(bookingId);
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              width: "100%",
+              padding: "8px 10px",
+              borderRadius: 8,
+              border: "none",
+              background: "transparent",
+              color: "#f87171",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            <Trash2 size={14} strokeWidth={2} />
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function BookingModal({ booking, bookings, invoices, onClose, onConfirm, onReject, onCompleted, onNotesSaved }) {
   const { theme:t } = useTheme();
@@ -314,10 +618,24 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
   const [filter,   setFilter]   = useState("All");
   const [selected, setSelected] = useState(null);
   const [customer, setCustomer] = useState(null);
-  async function handleDeleteBooking(bookingId) {
-  if (!window.confirm("Delete this booking?")) return;
-  await deleteBooking(bookingId);
-}
+  const [addOpen, setAddOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null); // { id, name }
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  async function confirmDeleteBooking() {
+    if (!deleteTarget?.id) return;
+    setDeleteBusy(true);
+    try {
+      await deleteBooking(deleteTarget.id);
+      showToast("Booking deleted");
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error(err);
+      showToast(err.message || "Failed to delete booking", "error");
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
 
   function handleCompleted(bookingId, amount) {
     useStore.setState(state => ({
@@ -343,8 +661,36 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
 
   if (loading) return <Skeleton rows={8} />;
 
-  const TH = { padding:"10px 12px", fontSize:11, fontWeight:600, color:t.thColor, textTransform:"uppercase", letterSpacing:0.8, textAlign:"left", background:"transparent", borderBottom:`1px solid ${t.border}` };
-  const TD = { padding:"12px 12px", fontSize:13, color:t.tdColor };
+  const TH = {
+    padding: "12px 14px",
+    fontSize: 11,
+    fontWeight: 600,
+    color: t.thColor,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    textAlign: "left",
+    background: "transparent",
+    borderBottom: `1px solid ${t.border}`,
+    whiteSpace: "nowrap",
+  };
+  const TD = {
+    padding: "14px 14px",
+    fontSize: 13,
+    color: t.tdColor,
+    verticalAlign: "middle",
+  };
+  const TD_NUM = {
+    ...TD,
+    fontVariantNumeric: "tabular-nums",
+    whiteSpace: "nowrap",
+  };
+  const TD_ELLIPSIS = {
+    ...TD,
+    maxWidth: 140,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  };
 
   const filtered = bookings.filter(b => {
     const s = search.toLowerCase();
@@ -377,6 +723,38 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
           .bk-table th:nth-child(5),.bk-table td:nth-child(5),
           .bk-table th:nth-child(7),.bk-table td:nth-child(7){display:none}
         }
+        .bk-icon-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          padding: 0;
+          border: none;
+          border-radius: 8px;
+          background: transparent;
+          color: rgba(255,255,255,0.35);
+          cursor: pointer;
+          transition: color 150ms cubic-bezier(0.16, 1, 0.3, 1), background 150ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .bk-icon-btn:hover {
+          background: rgba(255,255,255,0.06);
+        }
+        .bk-row:hover .bk-icon-confirm {
+          color: #4ade80;
+        }
+        .bk-row:hover .bk-icon-reject {
+          color: #f87171;
+        }
+        .bk-row:hover .bk-icon-btn:not(.bk-icon-confirm):not(.bk-icon-reject) {
+          color: rgba(255,255,255,0.55);
+        }
+        .bk-table tbody tr.bk-row {
+          transition: background 150ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .bk-table tbody tr.bk-row:hover {
+          background: rgba(255,255,255,0.025);
+        }
       `}</style>
 
       <BookingModal
@@ -389,6 +767,7 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
         onCompleted={handleCompleted}
         onNotesSaved={handleNotesSaved}
       />
+      <AddBookingModal open={addOpen} onClose={() => setAddOpen(false)} />
       <CustomerHistory customer={customer} bookings={bookings} invoices={invoices} onClose={()=>setCustomer(null)} />
 
       <div className="bk-header" style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:20 }}>
@@ -404,11 +783,11 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
         <PaymentStatCards bookings={bookings} />
       </div>
 
-      <div className="bk-filterrow" style={{ display:"flex", gap:10, marginBottom:16 }}>
-        <div style={{ position:"relative", flex:1 }}>
+      <div className="bk-filterrow" style={{ display:"flex", gap:10, marginBottom:16, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ position:"relative", flex:1, minWidth: 180 }}>
           <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", fontSize:15, color:t.textMuted }}>🔍</span>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search bookings..."
-            style={{ width:"100%", padding:"11px 16px 11px 42px", borderRadius:12, background:t.inputBg, border:`1px solid ${t.border}`, fontSize:14, color:t.textPrimary, outline:"none" }}
+            style={{ width:"100%", padding:"11px 16px 11px 42px", borderRadius:12, background:t.inputBg, border:`1px solid ${t.border}`, fontSize:14, color:t.textPrimary, outline:"none", boxSizing: "border-box" }}
             onFocus={e=>e.target.style.border=`1px solid ${t.accent}`} onBlur={e=>e.target.style.border=`1px solid ${t.border}`} />
         </div>
         <div className="bk-filters" style={{ display:"flex", gap:6 }}>
@@ -420,6 +799,23 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
             }}>{s}</button>
           ))}
         </div>
+        <button
+          type="button"
+          className="ui-interactive"
+          onClick={() => setAddOpen(true)}
+          style={{
+            ...primaryBtnStyle(t),
+            padding: "9px 16px",
+            fontSize: 13,
+            whiteSpace: "nowrap",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <Plus size={15} strokeWidth={2.5} />
+          Add Booking
+        </button>
       </div>
 
       {filtered.length===0 ? <EmptyState icon="📋" title="No bookings found" subtitle="Try a different search or filter" /> : (
@@ -430,9 +826,11 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
               <tbody className="list-stagger-rows">
                 {filtered.map((b,i)=>{
                   const stale = isStalePending(b);
+                  const fullId = b["Booking ID"] || "";
                   return (
                   <tr
                     key={i}
+                    className="bk-row"
                     style={{
                       cursor: "pointer",
                       ...(stale
@@ -447,55 +845,87 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
                     }}
                     onClick={()=>setSelected(b)}
                   >
-                    <td style={{...TD,fontFamily:"monospace",fontSize:11,color:t.textMuted}}>{b["Booking ID"]||"—"}</td>
-                    <td style={{...TD,fontWeight:600,color:t.textPrimary,cursor:"pointer"}} onClick={e=>{e.stopPropagation();setCustomer(b);}}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <span>{b.Name}</span>
+                    <td
+                      style={{
+                        ...TD,
+                        fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                        fontSize: 11,
+                        color: t.textMuted,
+                        letterSpacing: 0.3,
+                        whiteSpace: "nowrap",
+                      }}
+                      title={fullId || undefined}
+                    >
+                      {shortBookingId(fullId)}
+                    </td>
+                    <td style={{...TD,fontWeight:600,color:t.textPrimary,cursor:"pointer", maxWidth: 180}} onClick={e=>{e.stopPropagation();setCustomer(b);}}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", minWidth: 0 }}>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 140 }}>{b.Name}</span>
                         {tierByPhoneKey.get(phoneKey(b.Phone)) && (
                           <StatusBadge status={tierByPhoneKey.get(phoneKey(b.Phone))} />
                         )}
                       </div>
                     </td>
-                    <td style={TD}>{formatPhone(b.Phone?.toString()||"")}</td>
-                    <td style={TD}>{b.Service}</td>
+                    <td style={TD_ELLIPSIS} title={formatPhone(b.Phone?.toString()||"")}>
+                      {formatPhone(b.Phone?.toString()||"")}
+                    </td>
+                    <td style={{ ...TD_ELLIPSIS, maxWidth: 160 }} title={b.Service || ""}>{b.Service}</td>
                     <td style={TD}>
                       {b.Source ? <StatusBadge status={b.Source} /> : <span style={{ color: t.textMuted }}>—</span>}
                     </td>
-                    <td style={TD}>{formatDate(b.Date)}</td>
-                    <td style={TD}>{b.Time}</td>
-                  <td style={TD} onClick={e => e.stopPropagation()}>
-  <button
-    onClick={async () => {
-      if (b.Status === "Completed" || b.Status === "Cancelled") return;
-      const cycle = { "Pending": "Confirmed", "Confirmed": "Rejected", "Rejected": "Pending" };
-      const next = cycle[b.Status] || "Pending";
-      if (!window.confirm(`Change status to ${next}?`)) return;
-      await updateBookingStatus(b["Booking ID"], next);
-    }}
-    style={{ background: "none", border: "none", cursor: (b.Status === "Completed" || b.Status === "Cancelled") ? "default" : "pointer", padding: 0 }}
-  >
-    <StatusBadge status={b.Status} />
-  </button>
-</td>
+                    <td style={TD_NUM}>{formatDate(b.Date)}</td>
+                    <td style={TD_NUM}>{b.Time}</td>
+                    <td style={TD} onClick={e => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (b.Status === "Completed" || b.Status === "Cancelled") return;
+                          const cycle = { "Pending": "Confirmed", "Confirmed": "Rejected", "Rejected": "Pending" };
+                          const next = cycle[b.Status] || "Pending";
+                          if (!window.confirm(`Change status to ${next}?`)) return;
+                          await updateBookingStatus(b["Booking ID"], next);
+                        }}
+                        style={{ background: "none", border: "none", cursor: (b.Status === "Completed" || b.Status === "Cancelled") ? "default" : "pointer", padding: 0 }}
+                      >
+                        <StatusBadge status={b.Status} />
+                      </button>
+                    </td>
                     <td style={TD} onClick={e=>e.stopPropagation()}>
-                    <PaymentStatusCycler
-  status={b["Payment Status"]}
-  bookingId={b["Booking ID"]}
-  onChange={(bookingId) => changeStatus(bookingId, b["Payment Status"])}
-  loading={loadingId === b["Booking ID"]}
+                      <PaymentStatusCycler
+                        status={b["Payment Status"]}
+                        bookingId={b["Booking ID"]}
+                        onChange={(bookingId) => changeStatus(bookingId, b["Payment Status"])}
+                        loading={loadingId === b["Booking ID"]}
                       />
                     </td>
-                   <td style={TD} onClick={e => e.stopPropagation()}>
-  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-    {b.Status === "Pending" && (
-      <>
-        <button className="btn-ghost-ok" onClick={() => confirmBooking(b["Booking ID"], b.Name)} title="Confirm">✓</button>
-        <button className="btn-ghost-danger" onClick={() => rejectBooking(b["Booking ID"], b.Name)} title="Reject">✕</button>
-      </>
-    )}
-    <button className="btn-ghost-danger" onClick={() => handleDeleteBooking(b["Booking ID"])} title="Delete">🗑</button>
-  </div>
-</td>
+                    <td style={TD} onClick={e => e.stopPropagation()}>
+                      <div style={{ display: "flex", gap: 2, alignItems: "center", justifyContent: "flex-end" }}>
+                        {b.Status === "Pending" && (
+                          <>
+                            <button
+                              type="button"
+                              className="bk-icon-btn bk-icon-confirm"
+                              onClick={() => confirmBooking(b["Booking ID"], b.Name)}
+                              title="Confirm"
+                            >
+                              <Check size={16} strokeWidth={2} />
+                            </button>
+                            <button
+                              type="button"
+                              className="bk-icon-btn bk-icon-reject"
+                              onClick={() => rejectBooking(b["Booking ID"], b.Name)}
+                              title="Reject"
+                            >
+                              <X size={16} strokeWidth={2} />
+                            </button>
+                          </>
+                        )}
+                        <RowMoreMenu
+                          bookingId={b["Booking ID"]}
+                          onDelete={(id) => setDeleteTarget({ id, name: b.Name })}
+                        />
+                      </div>
+                    </td>
                   </tr>
                   );
                 })}
@@ -505,11 +935,19 @@ const updateBookingStatus = useStore(s => s.updateBookingStatus);
         </div>
       )}
 
-      {/* Manual booking manager */}
-      <div style={{ marginTop:32 }}>
-        <h2 style={{ fontSize:16, fontWeight:700, color:t.textPrimary, marginBottom:14 }}>Manage Bookings</h2>
-        <BookingManager />
-      </div>
+      <ConfirmModal
+        open={Boolean(deleteTarget)}
+        onClose={() => !deleteBusy && setDeleteTarget(null)}
+        onConfirm={confirmDeleteBooking}
+        busy={deleteBusy}
+        title="Delete this booking?"
+        message={
+          deleteTarget?.name
+            ? `Delete the booking for ${deleteTarget.name}? This can't be undone.`
+            : "Are you sure? This can't be undone."
+        }
+        confirmLabel="Delete booking"
+      />
     </div>
   );
 }

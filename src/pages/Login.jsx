@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSecurity } from "../context/SecurityContext";
-import { BrandSparkle } from "../components/icons";
+import IntroLoader, { shouldPlayIntro } from "../components/IntroLoader";
+import { BUSINESS_NAME, BUSINESS_TAGLINE } from "../constants/brand";
+import logoSrc from "../assets/logo.png";
 import { Eye, EyeOff, Lock, Loader2 } from "lucide-react";
 
 export default function Login() {
@@ -10,6 +12,7 @@ export default function Login() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showIntro, setShowIntro] = useState(() => shouldPlayIntro());
   const navigate = useNavigate();
   const { checkLoginAttempt, recordLoginSuccess, recordLoginFail } = useSecurity();
 
@@ -62,6 +65,7 @@ export default function Login() {
 
   return (
     <div className="login-page">
+      {showIntro && <IntroLoader onComplete={() => setShowIntro(false)} />}
       <style>{`
         .login-page {
           min-height: 100vh;
@@ -102,26 +106,34 @@ export default function Login() {
         }
 
         .login-logo {
-          width: 56px;
-          height: 56px;
+          width: 64px;
+          height: 64px;
           margin: 0 auto 16px;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
+          overflow: hidden;
           background: linear-gradient(145deg, #1a1a1f 0%, #0d0d10 100%);
-          border: 1px solid rgba(139,92,246,0.35);
+          border: 1px solid rgba(34,197,94,0.45);
           box-shadow:
-            0 0 24px rgba(139,92,246,0.25),
-            0 0 48px rgba(139,92,246,0.12),
+            0 0 24px rgba(34,197,94,0.28),
+            0 0 48px rgba(34,197,94,0.12),
             0 4px 16px rgba(0,0,0,0.4);
+        }
+
+        .login-logo img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
         }
 
         .login-title {
           color: rgba(255,255,255,0.92);
-          font-size: 28px;
+          font-size: 26px;
           font-weight: 700;
-          letter-spacing: -0.9px;
+          letter-spacing: -0.7px;
           margin: 0;
         }
 
@@ -335,9 +347,9 @@ export default function Login() {
         @media (max-width: 400px) {
           .login-page { padding: 16px 14px; padding-top: max(20px, 4vh); }
           .login-brand { margin-bottom: 18px; }
-          .login-logo { width: 48px; height: 48px; margin-bottom: 12px; }
+          .login-logo { width: 56px; height: 56px; margin-bottom: 12px; }
           .login-card { padding: 22px 18px; }
-          .login-title { font-size: 24px; }
+          .login-title { font-size: 20px; }
           .login-sub { margin-top: 6px; font-size: 13px; }
           .login-footer { margin-top: 18px; }
         }
@@ -346,10 +358,10 @@ export default function Login() {
       <div className="login-shell">
         <div className="login-brand">
           <div className="login-logo login-enter login-enter-1">
-            <BrandSparkle size={22} color="#a78bfa" />
+            <img src={logoSrc} alt={BUSINESS_NAME} draggable={false} />
           </div>
-          <h1 className="login-title login-enter login-enter-2">iRepair</h1>
-          <p className="login-sub login-enter login-enter-3">Owner portal — sign in to continue</p>
+          <h1 className="login-title login-enter login-enter-2">{BUSINESS_NAME}</h1>
+          <p className="login-sub login-enter login-enter-3">{BUSINESS_TAGLINE}</p>
         </div>
 
         <div className="login-card login-enter login-enter-4">
@@ -429,7 +441,7 @@ export default function Login() {
 
         <p className="login-footer login-enter login-enter-5">
           <Lock size={12} strokeWidth={2} />
-          Protected by iRepair Security
+          Protected by {BUSINESS_NAME} Security
         </p>
       </div>
     </div>

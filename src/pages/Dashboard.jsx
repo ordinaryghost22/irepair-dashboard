@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../store/useStore";
-import { useTheme, cardStyle } from "../context/ThemeContext";
+import { useTheme } from "../context/ThemeContext";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, CartesianGrid } from "recharts";
-import StatCard from "../components/StatCard";
+import StatCard, { premiumCardStyle } from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
 import { exportToCSV } from "../utils/export";
 import { formatDate, inRange } from "../utils/format";
@@ -23,9 +23,54 @@ const STATUS_COLORS = {
   Pending: "#fbbf24",
   Rejected: "#f87171",
 };
+const STATUS_GRADIENT = {
+  Confirmed: { top: "#86efac", bottom: "#16a34a" },
+  Pending: { top: "#fde047", bottom: "#d97706" },
+  Rejected: { top: "#fca5a5", bottom: "#dc2626" },
+};
 const PLACEHOLDER = "rgba(255,255,255,0.08)";
 const ACCENT = "#8b5cf6";
 const AMBER = "#f59e0b";
+
+/** Faint upward-trend silhouette for empty Booking Trend state */
+function TrendEmptyGraphic() {
+  return (
+    <svg
+      width="160"
+      height="72"
+      viewBox="0 0 160 72"
+      fill="none"
+      aria-hidden
+      style={{ opacity: 0.22, marginBottom: 4 }}
+    >
+      <path
+        d="M4 56 C28 54, 36 48, 48 40 C64 28, 72 36, 88 30 C104 24, 112 14, 128 12 C140 10, 148 8, 156 6"
+        stroke="rgba(167,139,250,0.9)"
+        strokeWidth="2"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <path
+        d="M4 56 C28 54, 36 48, 48 40 C64 28, 72 36, 88 30 C104 24, 112 14, 128 12 C140 10, 148 8, 156 6 V72 H4 Z"
+        fill="url(#trendEmptyFill)"
+      />
+      <defs>
+        <linearGradient id="trendEmptyFill" x1="80" y1="6" x2="80" y2="72" gradientUnits="userSpaceOnUse">
+          <stop stopColor="rgba(139,92,246,0.35)" />
+          <stop offset="1" stopColor="rgba(139,92,246,0)" />
+        </linearGradient>
+      </defs>
+      {[
+        [48, 40],
+        [88, 30],
+        [128, 12],
+        [156, 6],
+      ].map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r="2.5" fill="rgba(196,181,253,0.85)" />
+      ))}
+    </svg>
+  );
+}
 
 const SUMMARY_COPY = {
   Today: { title: "Today's Summary", subtitle: "Live snapshot for today", bookings: "Bookings today" },
@@ -106,8 +151,9 @@ export default function Dashboard() {
 
   const trendReady = filtered.length >= 3 && lineData.length >= 2;
   const singlePoint = lineData.length === 1;
+  const statusTotal = statusCounts.reduce((s, d) => s + d.value, 0);
 
-  const panel = cardStyle(t);
+  const panel = premiumCardStyle(t);
   const TH = {
     padding: "10px 12px",
     fontSize: 11,
@@ -152,6 +198,12 @@ export default function Dashboard() {
         @media(min-width:769px){
           .dash-statgrid{grid-template-columns:repeat(4,1fr)!important}
           .dash-chartgrid{grid-template-columns:1fr 1fr 280px!important}
+        }
+        .dash-table tbody tr.dash-row {
+          transition: background 160ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .dash-table tbody tr.dash-row:hover {
+          background: ${t.rowHover};
         }
       `}</style>
 
@@ -230,15 +282,15 @@ export default function Dashboard() {
           <div style={{ fontSize: 12, color: t.textMuted }}>{summaryCopy.subtitle}</div>
         </div>
         <button type="button" className="ui-interactive" onClick={() => navigate("/bookings")} style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, letterSpacing: -0.4 }}>{summaryBookings}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, letterSpacing: -0.4, fontVariantNumeric: "tabular-nums" }}>{summaryBookings}</div>
           <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}>{summaryCopy.bookings}</div>
         </button>
         <button type="button" className="ui-interactive" onClick={() => navigate("/invoices")} style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, letterSpacing: -0.4 }}>{unpaidInvoices}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, letterSpacing: -0.4, fontVariantNumeric: "tabular-nums" }}>{unpaidInvoices}</div>
           <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}>Unpaid invoices</div>
         </button>
         <button type="button" className="ui-interactive" onClick={() => navigate("/leads")} style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, letterSpacing: -0.4 }}>{summaryLeads}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: t.textPrimary, letterSpacing: -0.4, fontVariantNumeric: "tabular-nums" }}>{summaryLeads}</div>
           <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}>Leads</div>
         </button>
         <button type="button" className="ui-interactive" onClick={() => navigate("/cash")} style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
@@ -257,8 +309,8 @@ export default function Dashboard() {
           value={filtered.length}
           icon={<StatIconBookings />}
           gradient="linear-gradient(145deg,#8b5cf6,#6d28d9)"
-          iconShadow="0 0 32px rgba(139,92,246,0.35), 0 0 8px rgba(139,92,246,0.45) inset"
-          glow="0 0 28px rgba(139,92,246,0.18)"
+          iconShadow="0 0 18px rgba(139,92,246,0.28), 0 0 6px rgba(139,92,246,0.35) inset"
+          glow="0 0 18px rgba(139,92,246,0.12)"
           onClick={() => navigate("/bookings")}
         />
         <StatCard
@@ -266,8 +318,8 @@ export default function Dashboard() {
           value={leads.length}
           icon={<StatIconLeads />}
           gradient="linear-gradient(145deg,#f43f5e,#be123c)"
-          iconShadow="0 0 32px rgba(244,63,94,0.35), 0 0 8px rgba(244,63,94,0.45) inset"
-          glow="0 0 28px rgba(244,63,94,0.18)"
+          iconShadow="0 0 18px rgba(244,63,94,0.28), 0 0 6px rgba(244,63,94,0.35) inset"
+          glow="0 0 18px rgba(244,63,94,0.12)"
           onClick={() => navigate("/leads")}
         />
         <StatCard
@@ -275,8 +327,8 @@ export default function Dashboard() {
           value={available}
           icon={<StatIconSlots />}
           gradient="linear-gradient(145deg,#22c55e,#15803d)"
-          iconShadow="0 0 32px rgba(34,197,94,0.35), 0 0 8px rgba(34,197,94,0.45) inset"
-          glow="0 0 28px rgba(34,197,94,0.18)"
+          iconShadow="0 0 18px rgba(34,197,94,0.28), 0 0 6px rgba(34,197,94,0.35) inset"
+          glow="0 0 18px rgba(34,197,94,0.12)"
           onClick={() => navigate("/slots")}
         />
         <StatCard
@@ -286,8 +338,8 @@ export default function Dashboard() {
           stackPrefix
           icon={<StatIconRevenue />}
           gradient="linear-gradient(145deg,#10b981,#047857)"
-          iconShadow="0 0 32px rgba(16,185,129,0.35), 0 0 8px rgba(16,185,129,0.45) inset"
-          glow="0 0 28px rgba(16,185,129,0.18)"
+          iconShadow="0 0 18px rgba(16,185,129,0.28), 0 0 6px rgba(16,185,129,0.35) inset"
+          glow="0 0 18px rgba(16,185,129,0.12)"
           sub={confirmed + " confirmed"}
         />
       </div>
@@ -303,14 +355,18 @@ export default function Dashboard() {
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 8,
+                gap: 6,
                 color: t.textMuted,
                 fontSize: 13,
+                position: "relative",
               }}
             >
-              <div style={{ fontSize: 14, fontWeight: 600, color: t.textSecondary }}>Not enough data yet</div>
+              <TrendEmptyGraphic />
+              <div style={{ fontSize: 14, fontWeight: 600, color: t.textSecondary, position: "relative" }}>
+                Not enough data yet
+              </div>
               {singlePoint && filtered.length > 0 ? (
-                <div style={{ fontSize: 12 }}>
+                <div style={{ fontSize: 12, fontVariantNumeric: "tabular-nums" }}>
                   {lineData[0].count} booking{lineData[0].count === 1 ? "" : "s"} on {lineData[0].date}
                 </div>
               ) : (
@@ -349,6 +405,14 @@ export default function Dashboard() {
           <div style={{ fontWeight: 700, fontSize: 15, color: t.textPrimary, marginBottom: 16 }}>Status Overview</div>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={[{ Confirmed: confirmed, Pending: pending, Rejected: rejected }]} barSize={40}>
+              <defs>
+                {Object.entries(STATUS_GRADIENT).map(([key, g]) => (
+                  <linearGradient key={key} id={`barGrad${key}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={g.top} />
+                    <stop offset="100%" stopColor={g.bottom} />
+                  </linearGradient>
+                ))}
+              </defs>
               <CartesianGrid strokeDasharray="3 3" stroke={t.borderSub} vertical={false} />
               <XAxis hide />
               <YAxis
@@ -359,9 +423,9 @@ export default function Dashboard() {
                 domain={[0, (max) => Math.max(max, 1)]}
               />
               <Tooltip {...tip} />
-              <Bar dataKey="Confirmed" fill={STATUS_COLORS.Confirmed} radius={[8, 8, 0, 0]} minPointSize={4} />
-              <Bar dataKey="Pending" fill={STATUS_COLORS.Pending} radius={[8, 8, 0, 0]} minPointSize={4} />
-              <Bar dataKey="Rejected" fill={STATUS_COLORS.Rejected} radius={[8, 8, 0, 0]} minPointSize={4} />
+              <Bar dataKey="Confirmed" fill="url(#barGradConfirmed)" radius={[4, 4, 0, 0]} minPointSize={4} />
+              <Bar dataKey="Pending" fill="url(#barGradPending)" radius={[4, 4, 0, 0]} minPointSize={4} />
+              <Bar dataKey="Rejected" fill="url(#barGradRejected)" radius={[4, 4, 0, 0]} minPointSize={4} />
             </BarChart>
           </ResponsiveContainer>
           <div style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
@@ -370,7 +434,7 @@ export default function Dashboard() {
               [STATUS_COLORS.Pending, "Pending", pending],
               [STATUS_COLORS.Rejected, "Rejected", rejected],
             ].map(([c, l, v]) => (
-              <div key={l} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: t.textSecondary }}>
+              <div key={l} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: t.textSecondary, fontVariantNumeric: "tabular-nums" }}>
                 <span style={{ width: 8, height: 8, borderRadius: 2, background: c, display: "inline-block" }} />
                 {l}: <strong style={{ color: t.textPrimary, marginLeft: 3 }}>{v}</strong>
               </div>
@@ -396,13 +460,16 @@ export default function Dashboard() {
                   <Legend
                     iconType="circle"
                     iconSize={8}
-                    wrapperStyle={{ fontSize: 12, color: t.textSecondary }}
-                    payload={statusCounts.map((d) => ({
-                      value: d.name,
-                      type: "circle",
-                      color: d.color,
-                      id: d.name,
-                    }))}
+                    wrapperStyle={{ fontSize: 12, color: t.textSecondary, fontVariantNumeric: "tabular-nums" }}
+                    payload={statusCounts.map((d) => {
+                      const pct = statusTotal > 0 ? Math.round((d.value / statusTotal) * 100) : 0;
+                      return {
+                        value: `${d.name} · ${pct}%`,
+                        type: "circle",
+                        color: d.color,
+                        id: d.name,
+                      };
+                    })}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -474,7 +541,7 @@ export default function Dashboard() {
                 </tr>
               ) : (
                 filtered.slice(0, 6).map((b, i) => (
-                  <tr key={i}>
+                  <tr key={i} className="dash-row">
                     <td style={{ ...TD, fontWeight: 600 }}>{b.Name}</td>
                     <td style={TD}>{b.Service}</td>
                     <td style={{ ...TD, fontVariantNumeric: "tabular-nums" }}>{formatDate(b.Date)}</td>

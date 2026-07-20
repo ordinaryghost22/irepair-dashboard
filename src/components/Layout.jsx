@@ -8,7 +8,9 @@ import GlobalSearch from "./GlobalSearch";
 import NotifBell from "./NotifBell";
 import { useMobile } from "../hooks/useMobile";
 import OwnerBot from "./OwnerBot";
-import { NavIcon, BrandSparkle, LogoutIcon } from "./icons";
+import { NavIcon, LogoutIcon } from "./icons";
+import { BUSINESS_NAME } from "../constants/brand";
+import logoSrc from "../assets/logo.png";
 
 export default function Layout({ children }) {
   const location = useLocation();
@@ -381,19 +383,27 @@ function SidebarContent({ location, navigate, pendingCount, clearBadge, onNav })
               height: 42,
               borderRadius: 12,
               background: "linear-gradient(145deg, #1a1a1f 0%, #0d0d10 100%)",
-              border: "1px solid rgba(139,92,246,0.35)",
+              border: "1px solid rgba(34,197,94,0.4)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               color: "#a78bfa",
               flexShrink: 0,
-              boxShadow: "0 0 24px rgba(139,92,246,0.25)",
+              overflow: "hidden",
+              boxShadow: "0 0 24px rgba(34,197,94,0.22)",
             }}
           >
-            <BrandSparkle size={18} color="#a78bfa" />
+            <img
+              src={logoSrc}
+              alt=""
+              draggable={false}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
           </div>
           <div>
-            <div style={{ color: t.textPrimary, fontWeight: 700, fontSize: 16, letterSpacing: -0.5 }}>iRepair</div>
+            <div style={{ color: t.textPrimary, fontWeight: 700, fontSize: 14, letterSpacing: -0.4, lineHeight: 1.2 }}>
+              {BUSINESS_NAME}
+            </div>
             <div style={{ color: t.textMuted, fontSize: 11, marginTop: 1 }}>Owner Dashboard</div>
           </div>
         </div>
