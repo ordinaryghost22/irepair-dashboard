@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSecurity } from "../context/SecurityContext";
-import IntroLoader, { shouldPlayIntro } from "../components/IntroLoader";
+import GenesisBootSplash, { shouldPlayIntro } from "../components/GenesisBootSplash";
 import { BUSINESS_NAME, BUSINESS_SUBTITLE, BUSINESS_TAGLINE } from "../constants/brand";
 import logoSrc from "../assets/logo.png";
 import { Eye, EyeOff, Lock, Loader2 } from "lucide-react";
@@ -65,7 +65,9 @@ export default function Login() {
 
   return (
     <div className="login-page">
-      {showIntro && <IntroLoader onComplete={() => setShowIntro(false)} />}
+      {showIntro && (
+        <GenesisBootSplash onDismiss={() => setShowIntro(false)} />
+      )}
       <style>{`
         .login-page {
           min-height: 100vh;
