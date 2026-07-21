@@ -1,6 +1,6 @@
 import LogoIntro from "../components/LogoIntro";
 import logoSrc from "../assets/logo.png";
-import { BUSINESS_NAME } from "../constants/brand";
+import { BUSINESS_NAME, BUSINESS_SUBTITLE } from "../constants/brand";
 
 /**
  * Lightweight client demo surface for logo intro / avatar preview.
@@ -11,7 +11,7 @@ export default function ClientDemo() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f8f9fb",
+        background: "#030708",
         fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif",
       }}
     >
@@ -30,19 +30,27 @@ export default function ClientDemo() {
             alignItems: "center",
             gap: 14,
             padding: "16px 18px",
-            background: "#fff",
+            background: "rgba(255,255,255,0.04)",
             borderRadius: 16,
-            border: "1px solid rgba(0,0,0,0.06)",
-            boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+            border: "1px solid rgba(34,211,238,0.2)",
+            boxShadow: "0 0 24px rgba(34,211,238,0.08)",
           }}
         >
           <LogoIntro src={logoSrc} alt="" variant="avatar" size={80} />
           <div>
-            <div style={{ fontSize: 16, fontWeight: 650, color: "#111827" }}>
+            <div style={{ fontSize: 16, fontWeight: 650, color: "#fff" }}>
               {BUSINESS_NAME}
             </div>
-            <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>
-              Connected account
+            <div
+              style={{
+                fontSize: 11,
+                color: "rgba(34,211,238,0.85)",
+                marginTop: 3,
+                letterSpacing: "0.16em",
+                fontWeight: 600,
+              }}
+            >
+              {BUSINESS_SUBTITLE}
             </div>
           </div>
         </div>

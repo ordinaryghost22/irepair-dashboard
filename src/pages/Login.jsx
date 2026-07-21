@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSecurity } from "../context/SecurityContext";
 import IntroLoader, { shouldPlayIntro } from "../components/IntroLoader";
-import { BUSINESS_NAME, BUSINESS_TAGLINE } from "../constants/brand";
+import { BUSINESS_NAME, BUSINESS_SUBTITLE, BUSINESS_TAGLINE } from "../constants/brand";
 import logoSrc from "../assets/logo.png";
 import { Eye, EyeOff, Lock, Loader2 } from "lucide-react";
 
@@ -106,19 +106,19 @@ export default function Login() {
         }
 
         .login-logo {
-          width: 64px;
-          height: 64px;
+          width: 72px;
+          height: 72px;
           margin: 0 auto 16px;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
           overflow: hidden;
-          background: linear-gradient(145deg, #1a1a1f 0%, #0d0d10 100%);
-          border: 1px solid rgba(34,197,94,0.45);
+          background: #030708;
+          border: 1px solid rgba(34,211,238,0.45);
           box-shadow:
-            0 0 24px rgba(34,197,94,0.28),
-            0 0 48px rgba(34,197,94,0.12),
+            0 0 24px rgba(34,211,238,0.3),
+            0 0 48px rgba(34,211,238,0.12),
             0 4px 16px rgba(0,0,0,0.4);
         }
 
@@ -131,10 +131,19 @@ export default function Login() {
 
         .login-title {
           color: rgba(255,255,255,0.92);
-          font-size: 26px;
+          font-size: 28px;
           font-weight: 700;
-          letter-spacing: -0.7px;
+          letter-spacing: -0.6px;
           margin: 0;
+        }
+
+        .login-subtitle {
+          margin: 8px 0 0;
+          color: rgba(34,211,238,0.85);
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
         }
 
         .login-sub {
@@ -347,9 +356,9 @@ export default function Login() {
         @media (max-width: 400px) {
           .login-page { padding: 16px 14px; padding-top: max(20px, 4vh); }
           .login-brand { margin-bottom: 18px; }
-          .login-logo { width: 56px; height: 56px; margin-bottom: 12px; }
+          .login-logo { width: 60px; height: 60px; margin-bottom: 12px; }
           .login-card { padding: 22px 18px; }
-          .login-title { font-size: 20px; }
+          .login-title { font-size: 24px; }
           .login-sub { margin-top: 6px; font-size: 13px; }
           .login-footer { margin-top: 18px; }
         }
@@ -361,6 +370,7 @@ export default function Login() {
             <img src={logoSrc} alt={BUSINESS_NAME} draggable={false} />
           </div>
           <h1 className="login-title login-enter login-enter-2">{BUSINESS_NAME}</h1>
+          <p className="login-subtitle login-enter login-enter-2">{BUSINESS_SUBTITLE}</p>
           <p className="login-sub login-enter login-enter-3">{BUSINESS_TAGLINE}</p>
         </div>
 

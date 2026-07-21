@@ -9,7 +9,7 @@ import NotifBell from "./NotifBell";
 import { useMobile } from "../hooks/useMobile";
 import OwnerBot from "./OwnerBot";
 import { NavIcon, LogoutIcon } from "./icons";
-import { BUSINESS_NAME } from "../constants/brand";
+import { BUSINESS_NAME, BUSINESS_SUBTITLE } from "../constants/brand";
 import logoSrc from "../assets/logo.png";
 
 export default function Layout({ children }) {
@@ -382,15 +382,14 @@ function SidebarContent({ location, navigate, pendingCount, clearBadge, onNav })
               width: 42,
               height: 42,
               borderRadius: 12,
-              background: "linear-gradient(145deg, #1a1a1f 0%, #0d0d10 100%)",
-              border: "1px solid rgba(34,197,94,0.4)",
+              background: "#030708",
+              border: "1px solid rgba(34,211,238,0.4)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#a78bfa",
               flexShrink: 0,
               overflow: "hidden",
-              boxShadow: "0 0 24px rgba(34,197,94,0.22)",
+              boxShadow: "0 0 24px rgba(34,211,238,0.22)",
             }}
           >
             <img
@@ -401,10 +400,12 @@ function SidebarContent({ location, navigate, pendingCount, clearBadge, onNav })
             />
           </div>
           <div>
-            <div style={{ color: t.textPrimary, fontWeight: 700, fontSize: 14, letterSpacing: -0.4, lineHeight: 1.2 }}>
+            <div style={{ color: t.textPrimary, fontWeight: 700, fontSize: 15, letterSpacing: -0.3, lineHeight: 1.2 }}>
               {BUSINESS_NAME}
             </div>
-            <div style={{ color: t.textMuted, fontSize: 11, marginTop: 1 }}>Owner Dashboard</div>
+            <div style={{ color: "rgba(34,211,238,0.75)", fontSize: 10, marginTop: 2, letterSpacing: "0.14em", fontWeight: 600 }}>
+              {BUSINESS_SUBTITLE}
+            </div>
           </div>
         </div>
       </div>
